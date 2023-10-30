@@ -1,1 +1,0 @@
-/home/goldpancake/Documents/K-means_II/install/libk-means_II.so
