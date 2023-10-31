@@ -19,7 +19,7 @@ void kmeans_II::init()
     size_t index = distrib(gen);
 
     // 分配2 * k * ITERATION_TIMES个聚类中心的内存
-    size_t center_bytes = (OVER_SAMPLING * ITERATION_TIMES + 1) * original_dim * sizeof(float);
+    size_t center_bytes = (OVER_SAMPLING * INIT_ITERATION_TIMES + 1) * original_dim * sizeof(float);
     cluster_set = (float *)malloc(center_bytes);
     memset(cluster_set, 0, center_bytes);
 
@@ -35,7 +35,7 @@ void kmeans_II::init()
     float phi = costFromS2S(original_data, cluster_set, original_dim, original_size, current_k);
 
     // 迭代
-    for (int i = 0; i < ITERATION_TIMES; i++)
+    for (int i = 0; i < INIT_ITERATION_TIMES; i++)
     {
         // 存放概率值和索引的key-value对
         std::multimap<float, size_t, std::greater<float>> probability;
@@ -80,4 +80,26 @@ void kmeans_II::init()
     cluster_set = cluster_final;
 }
 
-void kmeans_II::iteration() {}
+void kmeans_II::iteration()
+{
+    // 计算全集中的向量所属的聚类中心的索引
+    size_t *belong = belongS2S(original_data, cluster_set, original_dim, original_size, K);
+
+    float *cluster_new = (float *)malloc(K * original_dim * sizeof(float));
+    memcpy(cluster_new, cluster_set, K * original_dim * sizeof(float));
+
+    int iteration_times = 0;
+
+    do
+    {
+        memcpy(cluster_set, cluster_new, K * original_dim * sizeof(float));
+        // 产生新的聚类中心集
+        for (int i = 0; i < K; i++)
+        {
+            memcpy(&cluster_new[i * original_dim], meanOfV(original_data, belong, original_dim, original_size, i), original_dim * sizeof(float));
+        }
+        // 更新归属关系索引
+        belong = belongS2S(original_data, cluster_new, original_dim, original_size, K);
+        iteration_times++;
+    } while (!isClose(cluster_new, cluster_set, original_dim, K, THRESHOLD) || iteration_times < MAX_KMEANS_ITERATION_TIMES);
+}

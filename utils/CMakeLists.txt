@@ -26,3 +26,11 @@ add_test(NAME test_belong_S2S COMMAND test_belong_S2S)
 add_executable(test_kmeanspp ./test/test_kmeanspp.cpp)
 target_link_libraries(test_kmeanspp common_utils)
 add_test(NAME test_kmeanspp COMMAND test_kmeanspp)
+
+add_executable(test_meanOfV ./test/test_meanOfV.cpp)
+target_link_libraries(test_meanOfV common_utils)
+add_test(NAME test_meanOfV COMMAND test_meanOfV)
+
+add_executable(test_isClose ./test/test_isClose.cpp)
+target_link_libraries(test_isClose common_utils)
+add_test(NAME test_isClose COMMAND test_isClose)

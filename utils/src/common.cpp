@@ -106,3 +106,39 @@ float *kmeanspp(float *cluster_set, size_t *omega, size_t k, const int dim, cons
 
     return cluster_final;
 }
+
+float *meanOfV(float *original_set, size_t *belong, const int dim, const size_t original_size, const size_t index)
+{
+    float *res = (float *)malloc(dim * sizeof(float));
+    size_t count = 0;
+    for (size_t i = 0; i < original_size; i++)
+    {
+        if (belong[i] == index)
+        {
+            for (size_t j = 0; j < dim; j++)
+            {
+                res[j] += original_set[i * dim + j];
+            }
+            count++;
+        }
+    }
+
+    for (size_t i = 0; i < dim; i++)
+    {
+        res[i] /= count;
+    }
+
+    return res;
+}
+
+bool isClose(float *cluster_new, float *cluster_old, const int dim, const size_t cluster_size, float epsilon)
+{
+    for (size_t i = 0; i < cluster_size; i++)
+    {
+        if (euclideanDistance(&cluster_new[i * dim], &cluster_old[i * dim], dim) > epsilon)
+        {
+            return false;
+        }
+    }
+    return true;
+}
