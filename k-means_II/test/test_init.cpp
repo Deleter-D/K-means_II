@@ -1,11 +1,8 @@
 #include <iostream>
 #include <random>
 #include <cstring>
-#include "../include/kmeans.h"
-
-#define DIM 96
-#define SIZE 300
-#define K 10
+#include "../include/kmeans_II.h"
+#include "../../utils/include/config.h"
 
 int main(int argc, char const *argv[])
 {
@@ -14,19 +11,19 @@ int main(int argc, char const *argv[])
     std::uniform_real_distribution<float> distrib(0, 1);
 
     float *INPUT;
-    INPUT = (float *)malloc(SIZE * DIM * sizeof(float));
-    for (int i = 0; i < SIZE * DIM; i++)
+    INPUT = (float *)malloc(TEST_SIZE * TEST_DIM * sizeof(float));
+    for (int i = 0; i < TEST_SIZE * TEST_DIM; i++)
     {
         INPUT[i] = distrib(gen);
     }
 
-    kmeans op(INPUT, SIZE, DIM, K);
+    kmeans_II op(INPUT, TEST_SIZE, TEST_DIM, K);
 
     op.init();
 
-    for (int i = 0; i < (2 * K * 5 + 2) * DIM; i++)
+    for (int i = 0; i < K * TEST_DIM; i++)
     {
-        if (op.center[i] < 0 && op.center[i] >= 1)
+        if (op.cluster_set[i] < 0 || op.cluster_set[i] >= 1)
             return -1;
     }
 

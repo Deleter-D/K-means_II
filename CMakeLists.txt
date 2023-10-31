@@ -6,4 +6,5 @@ set(CMAKE_CXX_STANDARD 14)
 
 enable_testing()
 
+add_subdirectory(./utils)
 add_subdirectory(./k-means_II)

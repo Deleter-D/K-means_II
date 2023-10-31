@@ -1,11 +1,8 @@
 #include <iostream>
 #include <random>
 #include <cstring>
-#include "../include/kmeans.h"
-
-#define DIM 96
-#define SIZE 100
-#define K 10
+#include "../include/common.h"
+#include "../include/config.h"
 
 int main(int argc, char const *argv[])
 {
@@ -13,19 +10,17 @@ int main(int argc, char const *argv[])
     std::mt19937 gen(rd());
     std::uniform_real_distribution<float> distrib(0, 1);
 
-    kmeans op;
-
     float *x, *y;
-    x = (float *)malloc(DIM * sizeof(float));
-    y = (float *)malloc(DIM * sizeof(float));
+    x = (float *)malloc(TEST_DIM * sizeof(float));
+    y = (float *)malloc(TEST_DIM * sizeof(float));
 
-    for (int i = 0; i < DIM; i++)
+    for (int i = 0; i < TEST_DIM; i++)
     {
         x[i] = distrib(gen);
         y[i] = distrib(gen);
     }
-    float distance1 = op.euclideanDistance(x, x, DIM);
-    float distance2 = op.euclideanDistance(x, y, DIM);
+    float distance1 = euclideanDistance(x, x, TEST_DIM);
+    float distance2 = euclideanDistance(x, y, TEST_DIM);
 
     if (distance1 != 0)
         return -1;
