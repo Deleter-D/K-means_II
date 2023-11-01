@@ -1,4 +1,5 @@
 #include "../include/common.cuh"
+#include "../include/config.h"
 #include <stdio.h>
 #include <random>
 
@@ -63,6 +64,11 @@ float *cudaEuclideanDistance(float *vec, float *set, const int dim, const int si
     cudaMemcpy(distance, d_distance, distance_bytes, cudaMemcpyDeviceToHost);
     cudaStreamSynchronize(stream);
 
+    cudaFree(d_distance);
+    cudaFree(d_vec);
+    cudaFree(d_set);
+    cudaFree(temp);
+
     cudaStreamDestroy(stream);
 
     return distance;
@@ -98,6 +104,9 @@ float cudaCostFromS2S(float *original_set, float *cluster_set, const int dim, co
     {
         sum += sums[i];
     }
+
+    free(sums);
+
     return sum;
 }
 
@@ -174,4 +183,26 @@ float *cudaKmeanspp(float *cluster_set, size_t *omega, size_t k, const int dim, 
     }
 
     return cluster_final;
+}
+
+__global__ void meanVecKernel(float *cluster_new, float *original_set, size_t *belong, const int dim, const size_t original_size, size_t *count)
+{
+    unsigned int tid = threadIdx.x;
+    unsigned int bid = blockIdx.y * gridDim.x + blockIdx.x;
+    unsigned int idx = bid + tid;
+
+    if (idx >= dim * original_size)
+        return;
+
+    cluster_new[belong[bid] + tid] += original_set[idx];
+    count[belong[bid]]++;
+    __syncthreads();
+
+    if (bid < K)
+        cluster_new[idx] /= count[bid];
+}
+
+float *cudaMeanVec(float *original_set, size_t *belong, const int dim, const size_t original_size, const size_t index)
+{
+    
 }

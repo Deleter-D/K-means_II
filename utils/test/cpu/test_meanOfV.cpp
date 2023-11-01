@@ -24,7 +24,7 @@ int main(int argc, char const *argv[])
         belong[i] = distribInt(gen);
     }
 
-    float *mean = meanOfV(original, belong, TEST_DIM, TEST_SIZE, 4);
+    float *mean = meanVec(original, belong, TEST_DIM, TEST_SIZE, 4);
 
     for (int i = 0; i < TEST_DIM; i++)
     {

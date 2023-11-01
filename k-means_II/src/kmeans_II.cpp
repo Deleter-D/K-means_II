@@ -96,7 +96,7 @@ void kmeans_II::iteration()
         // 产生新的聚类中心集
         for (int i = 0; i < K; i++)
         {
-            memcpy(&cluster_new[i * original_dim], meanOfV(original_data, belong, original_dim, original_size, i), original_dim * sizeof(float));
+            memcpy(&cluster_new[i * original_dim], meanVec(original_data, belong, original_dim, original_size, i), original_dim * sizeof(float));
         }
         // 更新归属关系索引
         belong = belongS2S(original_data, cluster_new, original_dim, original_size, K);

@@ -107,7 +107,7 @@ float *kmeanspp(float *cluster_set, size_t *omega, size_t k, const int dim, cons
     return cluster_final;
 }
 
-float *meanOfV(float *original_set, size_t *belong, const int dim, const size_t original_size, const size_t index)
+float *meanVec(float *original_set, size_t *belong, const int dim, const size_t original_size, const size_t index)
 {
     float *res = (float *)malloc(dim * sizeof(float));
     size_t count = 0;

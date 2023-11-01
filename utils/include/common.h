@@ -11,5 +11,5 @@ size_t *belongS2S(float *original_set, float *cluster_set, const int dim, const 
 float *kmeanspp(float *cluster_set, size_t *omega, size_t k, const int dim, const size_t cluster_size); // k-means++
 
 
-float *meanOfV(float *original_set, size_t *belong, const int dim, const size_t original_size, const size_t index); // 计算集合中向量的均值向量
+float *meanVec(float *original_set, size_t *belong, const int dim, const size_t original_size, const size_t index); // 计算集合中向量的均值向量
 bool isClose(float *cluster_new, float *cluster_old, const int dim, const size_t cluster_size, float epsilon);      // 判断两个聚类中心集是否接近
