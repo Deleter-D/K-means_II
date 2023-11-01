@@ -1,8 +1,9 @@
 #include <iostream>
 #include <random>
 #include <cstring>
-#include "../include/common.h"
-#include "../include/config.h"
+#include "../../include/common.h"
+#include "../../include/common.cuh"
+#include "../../include/config.h"
 
 int main(int argc, char const *argv[])
 {
@@ -23,13 +24,9 @@ int main(int argc, char const *argv[])
     }
 
     float cost = costFromV2S(x, S, TEST_DIM, TEST_SIZE);
+    float cost_cuda = cudaCostFromV2S(x, S, TEST_DIM, TEST_SIZE);
 
-    float *y = (float *)malloc(TEST_DIM * sizeof(float));
-    memcpy(y, &S[0], TEST_DIM * sizeof(float));
-
-    float distance = euclideanDistance(x, y, TEST_DIM);
-
-    if (cost > distance)
+    if (abs(cost - cost_cuda) > 1e-5)
         return -1;
 
     return 0;

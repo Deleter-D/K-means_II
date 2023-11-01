@@ -1,8 +1,8 @@
 #include <iostream>
 #include <random>
 #include <cstring>
-#include "../include/common.h"
-#include "../include/config.h"
+#include "../../include/common.h"
+#include "../../include/config.h"
 
 int main(int argc, char const *argv[])
 {

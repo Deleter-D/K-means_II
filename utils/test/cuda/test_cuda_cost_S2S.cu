@@ -1,8 +1,9 @@
 #include <iostream>
 #include <random>
 #include <cstring>
-#include "../include/common.h"
-#include "../include/config.h"
+#include "../../include/common.h"
+#include "../../include/common.cuh"
+#include "../../include/config.h"
 
 int main(int argc, char const *argv[])
 {
@@ -19,7 +20,11 @@ int main(int argc, char const *argv[])
         S2[i] = distrib(gen);
     }
 
-    bool isclose = isClose(S1, S2, TEST_DIM, TEST_SIZE, THRESHOLD);
+    float cost = costFromS2S(S1, S2, TEST_DIM, TEST_SIZE, TEST_SIZE);
+    float cost_cuda = cudaCostFromS2S(S1, S2, TEST_DIM, TEST_SIZE, TEST_SIZE);
+
+    if (abs(cost - cost_cuda) > 1e-5)
+        return -1;
 
     return 0;
 }

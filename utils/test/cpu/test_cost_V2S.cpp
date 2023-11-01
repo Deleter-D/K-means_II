@@ -1,8 +1,8 @@
 #include <iostream>
 #include <random>
 #include <cstring>
-#include "../include/common.h"
-#include "../include/config.h"
+#include "../../include/common.h"
+#include "../../include/config.h"
 
 int main(int argc, char const *argv[])
 {
@@ -22,9 +22,14 @@ int main(int argc, char const *argv[])
         x[i] = distrib(gen);
     }
 
-    size_t index = belongV2S(x, S, TEST_DIM, TEST_SIZE);
+    float cost = costFromV2S(x, S, TEST_DIM, TEST_SIZE);
 
-    if (index < 0 || index >= TEST_SIZE)
+    float *y = (float *)malloc(TEST_DIM * sizeof(float));
+    memcpy(y, &S[0], TEST_DIM * sizeof(float));
+
+    float distance = euclideanDistance(x, y, TEST_DIM);
+
+    if (cost > distance)
         return -1;
 
     return 0;

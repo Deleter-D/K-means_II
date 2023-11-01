@@ -4,6 +4,8 @@ project(K-means_II)
 
 set(CMAKE_CXX_STANDARD 14)
 
+enable_language(CUDA)
+
 enable_testing()
 
 add_subdirectory(./utils)
