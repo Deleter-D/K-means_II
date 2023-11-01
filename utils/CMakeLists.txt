@@ -58,3 +58,13 @@ add_executable(test_cuda_belong_V2S ./test/cuda/test_cuda_belong_V2S.cu)
 target_link_libraries(test_cuda_belong_V2S common_utils common_utils_cuda)
 set_target_properties(test_cuda_belong_V2S PROPERTIES CUDA_ARCHITECTURES "50;60;70;80")
 add_test(NAME test_cuda_belong_V2S COMMAND test_cuda_belong_V2S)
+
+add_executable(test_cuda_belong_S2S ./test/cuda/test_cuda_belong_S2S.cu)
+target_link_libraries(test_cuda_belong_S2S common_utils common_utils_cuda)
+set_target_properties(test_cuda_belong_S2S PROPERTIES CUDA_ARCHITECTURES "50;60;70;80")
+add_test(NAME test_cuda_belong_S2S COMMAND test_cuda_belong_S2S)
+
+add_executable(test_cuda_kmeanspp ./test/cuda/test_cuda_kmeanspp.cu)
+target_link_libraries(test_cuda_kmeanspp common_utils common_utils_cuda)
+set_target_properties(test_cuda_kmeanspp PROPERTIES CUDA_ARCHITECTURES "50;60;70;80")
+add_test(NAME test_cuda_kmeanspp COMMAND test_cuda_kmeanspp)

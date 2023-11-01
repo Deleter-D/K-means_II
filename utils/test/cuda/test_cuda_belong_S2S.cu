@@ -20,12 +20,14 @@ int main(int argc, char const *argv[])
         S2[i] = distrib(gen);
     }
 
-    float cost = costFromS2S(S1, S2, TEST_DIM, TEST_SIZE, TEST_SIZE);
-    printf("--------------\n");
-    float cost_cuda = cudaCostFromS2S(S1, S2, TEST_DIM, TEST_SIZE, TEST_SIZE);
+    size_t *index = belongS2S(S1, S2, TEST_DIM, TEST_SIZE, TEST_SIZE);
+    size_t *index_cuda = cudaBelongS2S(S1, S2, TEST_DIM, TEST_SIZE, TEST_SIZE);
 
-    if (abs(cost - cost_cuda) > 1e-2)
-        return -1;
+    for (int i = 0; i < TEST_SIZE; i++)
+    {
+        if (index[i] != index_cuda[i])
+            return -1;
+    }
 
     return 0;
 }

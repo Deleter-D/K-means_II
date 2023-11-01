@@ -9,3 +9,6 @@ float cudaCostFromV2S(float *vec, float *cluster_set, const int dim, const size_
 float cudaCostFromS2S(float *original_set, float *cluster_set, const int dim, const size_t original_size, const size_t cluster_size);
 
 size_t cudaBelongV2S(float *x, float *cluster_set, const int dim, const size_t size);
+size_t *cudaBelongS2S(float *original_set, float *cluster_set, const int dim, const size_t original_size, const size_t cluster_size);
+
+float *cudaKmeanspp(float *cluster_set, size_t *omega, size_t k, const int dim, const size_t cluster_size);
