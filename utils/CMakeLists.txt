@@ -68,3 +68,8 @@ add_executable(test_cuda_kmeanspp ./test/cuda/test_cuda_kmeanspp.cu)
 target_link_libraries(test_cuda_kmeanspp common_utils common_utils_cuda)
 set_target_properties(test_cuda_kmeanspp PROPERTIES CUDA_ARCHITECTURES "50;60;70;80")
 add_test(NAME test_cuda_kmeanspp COMMAND test_cuda_kmeanspp)
+
+add_executable(test_cuda_new_cluster ./test/cuda/test_cuda_new_cluster.cu)
+target_link_libraries(test_cuda_new_cluster common_utils common_utils_cuda)
+set_target_properties(test_cuda_new_cluster PROPERTIES CUDA_ARCHITECTURES "50;60;70;80")
+add_test(NAME test_cuda_new_cluster COMMAND test_cuda_new_cluster)

@@ -185,24 +185,97 @@ float *cudaKmeanspp(float *cluster_set, size_t *omega, size_t k, const int dim, 
     return cluster_final;
 }
 
-__global__ void meanVecKernel(float *cluster_new, float *original_set, size_t *belong, const int dim, const size_t original_size, size_t *count)
+__global__ void getNewClusterKernelPart1(float *cluster_new, float *original_set, size_t *belong, const int dim, const size_t original_size, unsigned int *count)
 {
     unsigned int tid = threadIdx.x;
     unsigned int bid = blockIdx.y * gridDim.x + blockIdx.x;
-    unsigned int idx = bid + tid;
+    unsigned int idx = bid * blockDim.x + tid;
 
     if (idx >= dim * original_size)
         return;
 
-    cluster_new[belong[bid] + tid] += original_set[idx];
-    count[belong[bid]]++;
-    __syncthreads();
-
-    if (bid < K)
-        cluster_new[idx] /= count[bid];
+    atomicAdd(&cluster_new[belong[bid] + tid], original_set[idx]);
+    if (tid == 0)
+        atomicAdd(&count[belong[bid]], 1);
 }
 
-float *cudaMeanVec(float *original_set, size_t *belong, const int dim, const size_t original_size, const size_t index)
+__global__ void getNewClusterKernelPart2(float *cluster_new, const int dim, unsigned int *count)
 {
-    
+    unsigned int tid = threadIdx.x;
+    // unsigned int bid = blockIdx.x * blockDim.x;
+    unsigned int idx = blockIdx.x * blockDim.x + tid;
+
+    if (idx >= dim * K)
+        return;
+
+    cluster_new[idx] /= count[blockIdx.x];
+
+    if (idx == 0)
+    {
+        printf("%d\n", count[0]);
+        printf("%d\n", count[1]);
+        printf("%d\n", count[2]);
+        printf("%d\n", count[3]);
+        printf("%d\n", count[4]);
+        printf("%d\n", count[5]);
+        printf("%d\n", count[6]);
+        printf("%d\n", count[7]);
+        printf("%d\n", count[8]);
+        printf("%d\n", count[9]);
+        printf("\n");
+    }
+}
+
+float *cudaGetNewCluster(float *original_set, size_t *belong, const int dim, const size_t original_size)
+{
+    cudaStream_t stream;
+    cudaStreamCreate(&stream);
+
+    size_t cluster_bytes = dim * K * sizeof(float);
+    size_t origianl_set_bytes = dim * original_size * sizeof(float);
+    size_t belong_bytes = original_size * sizeof(size_t);
+    size_t count_bytes = K * sizeof(unsigned int);
+
+    float *cluster_new = (float *)malloc(cluster_bytes);
+    // unsigned int *count = (unsigned int *)malloc(count_bytes);
+
+    float *d_cluster_new, *d_original_set;
+    size_t *d_belong;
+    unsigned int *d_count;
+    cudaMalloc((void **)&d_cluster_new, cluster_bytes);
+    cudaMalloc((void **)&d_original_set, origianl_set_bytes);
+    cudaMalloc((void **)&d_belong, belong_bytes);
+    cudaMalloc((void **)&d_count, count_bytes);
+
+    cudaMemcpy(d_original_set, original_set, origianl_set_bytes, cudaMemcpyHostToDevice);
+    cudaMemcpy(d_belong, belong, belong_bytes, cudaMemcpyHostToDevice);
+    cudaMemset(d_count, 0, count_bytes);
+
+    dim3 block(dim);
+    size_t grid_dim = ceil(sqrt(original_size));
+    dim3 grid(grid_dim, grid_dim);
+    getNewClusterKernelPart1<<<grid, block>>>(d_cluster_new, d_original_set, d_belong, dim, original_size, d_count);
+
+    // cudaMemcpy(cluster_new, d_cluster_new, cluster_bytes, cudaMemcpyDeviceToHost);
+    // cudaMemcpy(count, d_count, count_bytes, cudaMemcpyDeviceToHost);
+    cudaStreamSynchronize(stream);
+
+    // cudaMemcpy(d_cluster_new, cluster_new, cluster_bytes, cudaMemcpyHostToDevice);
+    // cudaMemcpy(d_count, count, count_bytes, cudaMemcpyHostToDevice);
+
+    dim3 block2(dim);
+    dim3 grid2(K);
+    getNewClusterKernelPart2<<<grid2, block2>>>(d_cluster_new, dim, d_count);
+
+    cudaMemcpy(cluster_new, d_cluster_new, cluster_bytes, cudaMemcpyDeviceToHost);
+    cudaStreamSynchronize(stream);
+
+    cudaFree(d_cluster_new);
+    cudaFree(d_original_set);
+    cudaFree(d_belong);
+    cudaFree(d_count);
+
+    cudaStreamDestroy(stream);
+
+    return cluster_new;
 }

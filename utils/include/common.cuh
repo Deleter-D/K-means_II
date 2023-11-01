@@ -13,4 +13,5 @@ size_t *cudaBelongS2S(float *original_set, float *cluster_set, const int dim, co
 
 float *cudaKmeanspp(float *cluster_set, size_t *omega, size_t k, const int dim, const size_t cluster_size);
 
-float *cudaMeanVec(float *original_set, size_t *belong, const int dim, const size_t original_size, const size_t index);
+__global__ void getNewClusterKernel(float *cluster_new, float *original_set, size_t *belong, const int dim, const size_t original_size, size_t *count);
+float *cudaGetNewCluster(float *original_set, size_t *belong, const int dim, const size_t original_size);
