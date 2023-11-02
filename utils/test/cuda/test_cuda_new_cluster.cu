@@ -23,20 +23,24 @@ int main(int argc, char const *argv[])
     for (int i = 0; i < TEST_SIZE; i++)
     {
         belong[i] = distribInt(gen);
-        printf("----->%d\n", belong[i]);
     }
 
-    float *cluster_new = cudaGetNewCluster(original, belong, TEST_DIM, TEST_SIZE);
+    float *cluster_new = (float *)malloc(TEST_DIM * K * sizeof(float));
+    for (int i = 0; i < K; i++)
+    {
+        memcpy(&cluster_new[i * TEST_DIM], meanVec(original, belong, TEST_DIM, TEST_SIZE, i), TEST_DIM * sizeof(float));
+    }
+
+    float *cluster_new_cuda = cudaGetNewCluster(original, belong, TEST_DIM, TEST_SIZE);
 
     for (int i = 0; i < K; i++)
     {
-        float *temp = meanVec(original, belong, TEST_DIM, TEST_SIZE, i);
         for (int j = 0; j < TEST_DIM; j++)
         {
-            if (abs(cluster_new[i * TEST_DIM + j] - temp[j]) > 1e-5)
+            if (abs(cluster_new_cuda[i * TEST_DIM + j] - cluster_new[i * TEST_DIM + j]) > 5e-2)
             {
-                // return -1;
-                // printf("%d,%d: %f, %f\n", i, j, temp[j], cluster_new[i * TEST_DIM + j]);
+                // printf("%d,%d: %f, %f\n", i, j, cluster_new[i * TEST_DIM + j], cluster_new_cuda[i * TEST_DIM + j]);
+                return -1;
             }
         }
     }
