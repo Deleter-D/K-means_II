@@ -7,5 +7,5 @@
 #define MAX_KMEANS_ITERATION_TIMES 100
 
 // 仅用于测试
-#define TEST_SIZE 100
-#define TEST_DIM 96
+#define TEST_SIZE 3000
+#define TEST_DIM 16

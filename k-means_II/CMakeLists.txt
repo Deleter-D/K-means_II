@@ -1,4 +1,5 @@
 include_directories(./include)
+include_directories(${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES})
 
 add_library(k-means_II SHARED ./src/kmeans_II.cpp)
 target_link_libraries(k-means_II common_utils)

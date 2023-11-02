@@ -4,6 +4,8 @@
 #include "../include/kmeans_II.h"
 #include "../../utils/include/config.h"
 
+#define __USE_CUDA__
+
 int main(int argc, char const *argv[])
 {
     std::random_device rd;

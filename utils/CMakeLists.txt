@@ -73,3 +73,8 @@ add_executable(test_cuda_new_cluster ./test/cuda/test_cuda_new_cluster.cu)
 target_link_libraries(test_cuda_new_cluster common_utils common_utils_cuda)
 set_target_properties(test_cuda_new_cluster PROPERTIES CUDA_ARCHITECTURES "50;60;70;80")
 add_test(NAME test_cuda_new_cluster COMMAND test_cuda_new_cluster)
+
+add_executable(test_cuda_isClose ./test/cuda/test_cuda_isClose.cu)
+target_link_libraries(test_cuda_isClose common_utils common_utils_cuda)
+set_target_properties(test_cuda_isClose PROPERTIES CUDA_ARCHITECTURES "50;60;70;80")
+add_test(NAME test_cuda_isClose COMMAND test_cuda_isClose)

@@ -15,14 +15,14 @@ __global__ void euclideanDistanceKernel(float *distance, float *vec, float *set,
     }
     __syncthreads();
 
-    // 将每个向量的96个元素归约为32个元素
-    __shared__ float s_data[32];
-    if (tid < 32)
-        s_data[tid] = temp[idx] + temp[idx + 32] + temp[idx + 64];
+    extern __shared__ float s_data[];
+    s_data[tid] = temp[idx];
+    // if (tid < 32)
+    //     s_data[tid] = temp[idx] + temp[idx + 32] + temp[idx + 64];
     __syncthreads();
 
     // 交错匹配的归约求和
-    for (int stride = 16; stride > 0; stride >>= 1)
+    for (int stride = blockDim.x / 2; stride > 0; stride >>= 1)
     {
         if (tid < stride)
         {
@@ -59,7 +59,7 @@ float *cudaEuclideanDistance(float *vec, float *set, const int dim, const int si
 
     dim3 block(dim);
     dim3 grid((size * dim + block.x - 1) / block.x);
-    euclideanDistanceKernel<<<grid, block, 32 * sizeof(float), stream>>>(d_distance, d_vec, d_set, temp, dim, size);
+    euclideanDistanceKernel<<<grid, block, dim * sizeof(float), stream>>>(d_distance, d_vec, d_set, temp, dim, size);
 
     cudaMemcpy(distance, d_distance, distance_bytes, cudaMemcpyDeviceToHost);
     cudaStreamSynchronize(stream);
@@ -204,17 +204,14 @@ __global__ void getNewClusterKernel(float *cluster_new, float *original_set, siz
     cluster_new[idx] /= count[bid];
 }
 
-float *cudaGetNewCluster(float *original_set, size_t *belong, const int dim, const size_t original_size)
+void cudaGetNewCluster(float *cluster_new, float *original_set, size_t *belong, const int dim, const size_t original_size)
 {
-    cudaStream_t stream;
-    cudaStreamCreate(&stream);
-
     size_t cluster_bytes = dim * K * sizeof(float);
     size_t origianl_set_bytes = dim * original_size * sizeof(float);
     size_t belong_bytes = original_size * sizeof(size_t);
     size_t count_bytes = K * sizeof(unsigned int);
 
-    float *cluster_new = (float *)malloc(cluster_bytes);
+    // float *cluster_new = (float *)malloc(cluster_bytes);
 
     float *d_cluster_new, *d_original_set;
     size_t *d_belong;
@@ -234,14 +231,82 @@ float *cudaGetNewCluster(float *original_set, size_t *belong, const int dim, con
     getNewClusterKernel<<<grid, block>>>(d_cluster_new, d_original_set, d_belong, dim, original_size, d_count);
 
     cudaMemcpy(cluster_new, d_cluster_new, cluster_bytes, cudaMemcpyDeviceToHost);
-    cudaStreamSynchronize(stream);
+    cudaDeviceSynchronize();
 
     cudaFree(d_cluster_new);
     cudaFree(d_original_set);
     cudaFree(d_belong);
     cudaFree(d_count);
 
-    cudaStreamDestroy(stream);
+    // return cluster_new;
+}
 
-    return cluster_new;
+__global__ void isCloseKernel(float *distance, float *cluster_new, float *cluster_old, float *temp, const int dim, const size_t cluster_size)
+{
+    unsigned int tid = threadIdx.x;
+    unsigned int idx = blockIdx.x * blockDim.x + tid;
+
+    // 计算每对元素差的平方，存入temp
+    if (idx < dim * cluster_size)
+    {
+        temp[idx] = (cluster_new[idx] - cluster_old[idx]) * (cluster_new[idx] - cluster_old[idx]);
+    }
+    __syncthreads();
+
+    extern __shared__ float s_data[];
+    s_data[tid] = temp[idx];
+    __syncthreads();
+
+    // 交错匹配的归约求和
+    for (int stride = blockDim.x / 2; stride > 0; stride >>= 1)
+    {
+        if (tid < stride)
+        {
+            s_data[tid] += s_data[tid + stride];
+        }
+        __syncthreads();
+    }
+
+    if (tid == 0)
+        distance[blockIdx.x] = s_data[0];
+}
+
+bool cudaIsClose(float *cluster_new, float *cluster_old, const int dim, const size_t cluster_size, float epsilon)
+{
+    size_t distance_bytes = cluster_size * sizeof(float);
+    size_t cluster_bytes = dim * cluster_size * sizeof(float);
+
+    float *distance = (float *)malloc(distance_bytes);
+
+    float *d_distance, *d_cluster_new, *d_cluster_old, *temp;
+    cudaMalloc((void **)&d_distance, distance_bytes);
+    cudaMalloc((void **)&d_cluster_new, cluster_bytes);
+    cudaMalloc((void **)&d_cluster_old, cluster_bytes);
+    cudaMalloc((void **)&temp, cluster_bytes);
+
+    cudaMemcpy(d_cluster_new, cluster_new, cluster_bytes, cudaMemcpyHostToDevice);
+    cudaMemcpy(d_cluster_old, cluster_old, cluster_bytes, cudaMemcpyHostToDevice);
+    cudaMemset(d_distance, 0, distance_bytes);
+    cudaMemset(temp, 0, cluster_bytes);
+
+    dim3 block(dim);
+    dim3 grid((cluster_size * dim + block.x - 1) / block.x);
+    euclideanDistanceKernel<<<grid, block, dim * sizeof(float)>>>(d_distance, d_cluster_new, d_cluster_old, temp, dim, cluster_size);
+
+    cudaMemcpy(distance, d_distance, distance_bytes, cudaMemcpyDeviceToHost);
+    cudaDeviceSynchronize();
+
+    cudaFree(d_distance);
+    cudaFree(d_cluster_new);
+    cudaFree(d_cluster_old);
+    cudaFree(temp);
+
+    for (size_t i = 0; i < cluster_size; i++)
+    {
+        if (distance[i] > epsilon)
+        {
+            return false;
+        }
+    }
+    return true;
 }

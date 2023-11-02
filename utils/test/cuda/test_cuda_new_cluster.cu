@@ -31,7 +31,8 @@ int main(int argc, char const *argv[])
         memcpy(&cluster_new[i * TEST_DIM], meanVec(original, belong, TEST_DIM, TEST_SIZE, i), TEST_DIM * sizeof(float));
     }
 
-    float *cluster_new_cuda = cudaGetNewCluster(original, belong, TEST_DIM, TEST_SIZE);
+    float *cluster_new_cuda = (float *)malloc(TEST_DIM * K * sizeof(float));
+    cudaGetNewCluster(cluster_new_cuda, original, belong, TEST_DIM, TEST_SIZE);
 
     for (int i = 0; i < K; i++)
     {

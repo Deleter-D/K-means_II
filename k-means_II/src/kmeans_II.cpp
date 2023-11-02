@@ -9,6 +9,7 @@
 
 #include "../include/kmeans_II.h"
 #include "../../utils/include/common.h"
+#include "../../utils/include/common.cuh"
 
 void kmeans_II::init()
 {
@@ -32,7 +33,12 @@ void kmeans_II::init()
     center_index.insert(index); // 记录第一个聚类中心全局索引
 
     // 计算此时聚类中心集与全集的代价
-    float phi = costFromS2S(original_data, cluster_set, original_dim, original_size, current_k);
+    float phi;
+#ifdef __USE_CUDA__
+    phi = cudaCostFromS2S(original_data, cluster_set, original_dim, original_size, current_k);
+#else
+    phi = costFromS2S(original_data, cluster_set, original_dim, original_size, current_k);
+#endif
 
     // 迭代
     for (int i = 0; i < INIT_ITERATION_TIMES; i++)
@@ -40,12 +46,21 @@ void kmeans_II::init()
         // 存放概率值和索引的key-value对
         std::multimap<float, size_t, std::greater<float>> probability;
         float current_p;
+        float cost_set2cluster;
+#ifdef __USE_CUDA__
+        cost_set2cluster = cudaCostFromS2S(original_data, cluster_set, original_dim, original_size, current_k);
+#else
+        cost_set2cluster = costFromS2S(original_data, cluster_set, original_dim, original_size, current_k);
+#endif
         for (int j = 0; j < original_size; j++)
         {
             float *temp = &original_data[j * original_dim];
-            // 计算当前向量的概率
-            current_p = OVER_SAMPLING * costFromV2S(temp, cluster_set, original_dim, current_k) /
-                        costFromS2S(original_data, cluster_set, original_dim, original_size, current_k);
+// 计算当前向量的概率
+#ifdef __USE_CUDA__
+            current_p = OVER_SAMPLING * cudaCostFromV2S(temp, cluster_set, original_dim, current_k) / cost_set2cluster;
+#else
+            current_p = OVER_SAMPLING * costFromV2S(temp, cluster_set, original_dim, current_k) / cost_set2cluster;
+#endif
             probability.insert({current_p, j});
         }
         auto beg = probability.cbegin();
@@ -69,37 +84,73 @@ void kmeans_II::init()
     size_t *omega = (size_t *)malloc(current_k * sizeof(size_t));
     memset(omega, 0, current_k * sizeof(size_t));
     // 记录每个向量归属的聚类中心索引
-    size_t *index_X2C = belongS2S(original_data, cluster_set, original_dim, original_size, current_k);
+
+    size_t *index_X2C;
+#ifdef __USE_CUDA__
+    index_X2C = cudaBelongS2S(original_data, cluster_set, original_dim, original_size, current_k);
+#else
+    index_X2C = belongS2S(original_data, cluster_set, original_dim, original_size, current_k);
+#endif
+
     for (int i = 0; i < original_size; i++)
     {
         omega[index_X2C[i]]++;
     }
 
     // 利用kmeans++获取最终聚类中心
-    float *cluster_final = kmeanspp(cluster_set, omega, K, original_dim, current_k);
+
+    float *cluster_final;
+#ifdef __USE_CUDA__
+    cluster_final = cudaKmeanspp(cluster_set, omega, K, original_dim, current_k);
+#else
+    cluster_final = kmeanspp(cluster_set, omega, K, original_dim, current_k);
+#endif
+
     cluster_set = cluster_final;
 }
 
 void kmeans_II::iteration()
 {
     // 计算全集中的向量所属的聚类中心的索引
-    size_t *belong = belongS2S(original_data, cluster_set, original_dim, original_size, K);
+    size_t *belong;
+#ifdef __USE_CUDA__
+    belong = cudaBelongS2S(original_data, cluster_set, original_dim, original_size, K);
+#else
+    belong = belongS2S(original_data, cluster_set, original_dim, original_size, K);
+#endif
 
     float *cluster_new = (float *)malloc(K * original_dim * sizeof(float));
     memcpy(cluster_new, cluster_set, K * original_dim * sizeof(float));
 
     int iteration_times = 0;
+    bool isclose;
 
     do
     {
         memcpy(cluster_set, cluster_new, K * original_dim * sizeof(float));
+
+#ifdef __USE_CUDA__
+        cudaGetNewCluster(cluster_new, original_data, belong, original_dim, original_size);
+#else
         // 产生新的聚类中心集
         for (int i = 0; i < K; i++)
         {
             memcpy(&cluster_new[i * original_dim], meanVec(original_data, belong, original_dim, original_size, i), original_dim * sizeof(float));
         }
+#endif
+
+#ifdef __USE_CUDA__
+        belong = cudaBelongS2S(original_data, cluster_new, original_dim, original_size, K);
+#else
         // 更新归属关系索引
         belong = belongS2S(original_data, cluster_new, original_dim, original_size, K);
+#endif
         iteration_times++;
-    } while (!isClose(cluster_new, cluster_set, original_dim, K, THRESHOLD) || iteration_times < MAX_KMEANS_ITERATION_TIMES);
+
+#ifdef __USE_CUDA__
+        isclose = cudaIsClose(cluster_new, cluster_set, original_dim, K, THRESHOLD);
+#else
+        isclose = isClose(cluster_new, cluster_set, original_dim, K, THRESHOLD);
+#endif
+    } while (!isclose || iteration_times < MAX_KMEANS_ITERATION_TIMES);
 }

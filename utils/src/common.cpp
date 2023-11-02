@@ -87,11 +87,11 @@ float *kmeanspp(float *cluster_set, size_t *omega, size_t k, const int dim, cons
     while (current_k < k)
     {
         max_p = -1.0f;
+        float cost_set2final = costFromS2S(cluster_set, cluster_final, dim, cluster_size, current_k);
         for (size_t i = 0; i < cluster_size; i++)
         {
             // 计算当前向量的概率
-            temp_p = omega[i] * costFromV2S(&cluster_set[i * dim], cluster_final, dim, current_k) /
-                     costFromS2S(cluster_set, cluster_final, dim, cluster_size, current_k);
+            temp_p = omega[i] * costFromV2S(&cluster_set[i * dim], cluster_final, dim, current_k) / cost_set2final;
             // 记录概率最大的向量信息
             if (temp_p > max_p)
             {
