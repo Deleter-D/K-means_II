@@ -11,6 +11,8 @@
 #include "../../utils/include/common.h"
 #include "../../utils/include/common.cuh"
 
+#define __USE_CUDA__
+
 void kmeans_II::init()
 {
     std::random_device rd;
@@ -35,8 +37,10 @@ void kmeans_II::init()
     // 计算此时聚类中心集与全集的代价
     float phi;
 #ifdef __USE_CUDA__
+    printf("cudaCostFromS2S\n");
     phi = cudaCostFromS2S(original_data, cluster_set, original_dim, original_size, current_k);
 #else
+    printf("costFromS2S\n");
     phi = costFromS2S(original_data, cluster_set, original_dim, original_size, current_k);
 #endif
 
@@ -125,6 +129,7 @@ void kmeans_II::iteration()
     int iteration_times = 0;
     bool isclose;
 
+    size_t *temp_count = (size_t *)malloc(K * sizeof(size_t));
     do
     {
         memcpy(cluster_set, cluster_new, K * original_dim * sizeof(float));
@@ -145,6 +150,22 @@ void kmeans_II::iteration()
         // 更新归属关系索引
         belong = belongS2S(original_data, cluster_new, original_dim, original_size, K);
 #endif
+
+        printf("迭代%d\n", iteration_times);
+        memset(temp_count, 0, K * sizeof(size_t));
+        // for (int i = 0; i < original_size; i++)
+        // {
+        //     printf("%d,%d\n", belong[i], belong_cuda[i]);
+        // }
+        for (int i = 0; i < original_size; i++)
+        {
+            temp_count[belong[i]]++;
+        }
+        for (int i = 0; i < K; i++)
+        {
+            printf("%d: %d个\n", i, temp_count[i]);
+        }
+
         iteration_times++;
 
 #ifdef __USE_CUDA__
@@ -152,5 +173,7 @@ void kmeans_II::iteration()
 #else
         isclose = isClose(cluster_new, cluster_set, original_dim, K, THRESHOLD);
 #endif
-    } while (!isclose || iteration_times < MAX_KMEANS_ITERATION_TIMES);
+        printf("迭代结果%d: %s\n", iteration_times, isclose ? "close" : "not close");
+    } while (!isclose && iteration_times < MAX_KMEANS_ITERATION_TIMES);
+    printf("------------->%d\n", iteration_times);
 }

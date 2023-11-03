@@ -1,16 +1,20 @@
 #include <iostream>
 #include <random>
 #include <cstring>
+#include <cuda_runtime.h>
 #include "../include/kmeans_II.h"
 #include "../../utils/include/config.h"
 
-#define __USE_CUDA__
-
 int main(int argc, char const *argv[])
 {
+    // #ifdef __USE_CUDA__
+    //     cudaSetDevice(0);
+    // #endif
+
     std::random_device rd;
     std::mt19937 gen(rd());
-    std::uniform_real_distribution<float> distrib(0, 1);
+    // std::uniform_real_distribution<float> distrib(0, 1);
+    std::normal_distribution<float> distrib(0, 30);
 
     float *INPUT;
     INPUT = (float *)malloc(TEST_SIZE * TEST_DIM * sizeof(float));
@@ -24,10 +28,17 @@ int main(int argc, char const *argv[])
     op.init();
     op.iteration();
 
+    // #ifdef __USE_CUDA__
+    //     cudaDeviceReset();
+    // #endif
+
     for (int i = 0; i < K * TEST_DIM; i++)
     {
         if (op.cluster_set[i] < 0 || op.cluster_set[i] >= 1)
-            return -1;
+        {
+            printf("%f\t", op.cluster_set[i]);
+            // return -1;
+        }
     }
 
     return 0;

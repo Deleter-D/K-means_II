@@ -266,7 +266,7 @@ __global__ void isCloseKernel(float *distance, float *cluster_new, float *cluste
         }
         __syncthreads();
     }
-
+    
     if (tid == 0)
         distance[blockIdx.x] = s_data[0];
 }
@@ -291,7 +291,7 @@ bool cudaIsClose(float *cluster_new, float *cluster_old, const int dim, const si
 
     dim3 block(dim);
     dim3 grid((cluster_size * dim + block.x - 1) / block.x);
-    euclideanDistanceKernel<<<grid, block, dim * sizeof(float)>>>(d_distance, d_cluster_new, d_cluster_old, temp, dim, cluster_size);
+    isCloseKernel<<<grid, block, dim * sizeof(float)>>>(d_distance, d_cluster_new, d_cluster_old, temp, dim, cluster_size);
 
     cudaMemcpy(distance, d_distance, distance_bytes, cudaMemcpyDeviceToHost);
     cudaDeviceSynchronize();
