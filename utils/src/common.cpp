@@ -55,17 +55,15 @@ size_t belongV2S(float *x, float *cluster_set, const int dim, const size_t size)
     return index;
 }
 
-size_t *belongS2S(float *original_set, float *cluster_set, const int dim, const size_t original_size, const size_t cluster_size)
+void belongS2S(size_t *index, float *original_set, float *cluster_set, const int dim, const size_t original_size, const size_t cluster_size)
 {
-    size_t *index = (size_t *)malloc(original_size * sizeof(size_t));
     for (size_t i = 0; i < original_size; i++)
     {
         index[i] = belongV2S(&original_set[i * dim], cluster_set, dim, cluster_size);
     }
-    return index;
 }
 
-float *kmeanspp(float *cluster_set, size_t *omega, size_t k, const int dim, const size_t cluster_size)
+void kmeanspp(float *cluster_final, float *cluster_set, size_t *omega, size_t k, const int dim, const size_t cluster_size)
 {
     std::random_device rd;
     std::mt19937 gen(rd());
@@ -73,8 +71,6 @@ float *kmeanspp(float *cluster_set, size_t *omega, size_t k, const int dim, cons
 
     size_t index = distrib(gen);
 
-    // 申请最终聚类中心集的内存
-    float *cluster_final = (float *)malloc(k * dim * sizeof(float));
     // 均匀分布中随机采样一个原聚类中心集的向量放入最终聚类中心集中
     memcpy(&cluster_final[0], &cluster_set[index * dim], dim * sizeof(float));
     size_t current_k = 1;
@@ -103,13 +99,9 @@ float *kmeanspp(float *cluster_set, size_t *omega, size_t k, const int dim, cons
         memcpy(&cluster_final[current_k * dim], &cluster_set[max_p_index * dim], dim * sizeof(float));
         current_k++;
     }
-
-    return cluster_final;
 }
-
-float *meanVec(float *original_set, size_t *belong, const int dim, const size_t original_size, const size_t index)
+void meanVec(float *res, float *original_set, size_t *belong, const int dim, const size_t original_size, const size_t index)
 {
-    float *res = (float *)malloc(dim * sizeof(float));
     size_t count = 0;
     for (size_t i = 0; i < original_size; i++)
     {
@@ -127,8 +119,6 @@ float *meanVec(float *original_set, size_t *belong, const int dim, const size_t 
     {
         res[i] /= count;
     }
-
-    return res;
 }
 
 bool isClose(float *cluster_new, float *cluster_old, const int dim, const size_t cluster_size, float epsilon)

@@ -29,6 +29,10 @@ int main(int argc, char const *argv[])
 
     float distance = euclideanDistance(x, y, TEST_DIM);
 
+    free(x);
+    free(y);
+    free(S);
+
     if (cost > distance)
         return -1;
 

@@ -22,6 +22,9 @@ int main(int argc, char const *argv[])
     float distance1 = euclideanDistance(x, x, TEST_DIM);
     float distance2 = euclideanDistance(x, y, TEST_DIM);
 
+    free(x);
+    free(y);
+
     if (distance1 != 0)
         return -1;
 

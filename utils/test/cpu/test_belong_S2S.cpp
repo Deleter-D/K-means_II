@@ -19,13 +19,22 @@ int main(int argc, char const *argv[])
         S2[i] = distrib(gen);
     }
 
-    size_t *index = belongS2S(S1, S2, TEST_DIM, TEST_SIZE, TEST_SIZE);
+    size_t *index = (size_t *)malloc(TEST_SIZE * sizeof(size_t));
+    belongS2S(index, S1, S2, TEST_DIM, TEST_SIZE, TEST_SIZE);
+
+    free(S1);
+    free(S2);
 
     for (int i = 0; i < TEST_SIZE; i++)
     {
         if (index[i] < 0 || index[i] >= TEST_SIZE)
+        {
+            free(index);
             return -1;
+        }
     }
+
+    free(index);
 
     return 0;
 }

@@ -26,6 +26,9 @@ int main(int argc, char const *argv[])
     size_t index = belongV2S(x, S, TEST_DIM, TEST_SIZE);
     size_t index_cuda = cudaBelongV2S(x, S, TEST_DIM, TEST_SIZE);
 
+    free(x);
+    free(S);
+
     if (index != index_cuda)
         return -1;
 

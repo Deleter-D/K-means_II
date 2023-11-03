@@ -26,6 +26,9 @@ int main(int argc, char const *argv[])
     float cost = costFromV2S(x, S, TEST_DIM, TEST_SIZE);
     float cost_cuda = cudaCostFromV2S(x, S, TEST_DIM, TEST_SIZE);
 
+    free(x);
+    free(S);
+
     if (abs(cost - cost_cuda) > 1e-5)
         return -1;
 

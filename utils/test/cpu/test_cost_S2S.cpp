@@ -10,7 +10,6 @@ int main(int argc, char const *argv[])
     std::mt19937 gen(rd());
     std::uniform_real_distribution<float> distrib(0, 1);
 
-
     float *S1, *S2;
     S1 = (float *)malloc(TEST_SIZE * TEST_DIM * sizeof(float));
     S2 = (float *)malloc(TEST_SIZE * TEST_DIM * sizeof(float));
@@ -21,6 +20,9 @@ int main(int argc, char const *argv[])
     }
 
     float cost = costFromS2S(S1, S2, TEST_DIM, TEST_SIZE, TEST_SIZE);
+
+    free(S1);
+    free(S2);
 
     return 0;
 }

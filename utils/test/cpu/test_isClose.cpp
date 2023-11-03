@@ -21,5 +21,8 @@ int main(int argc, char const *argv[])
 
     bool isclose = isClose(S1, S2, TEST_DIM, TEST_SIZE, THRESHOLD);
 
+    free(S1);
+    free(S2);
+
     return 0;
 }

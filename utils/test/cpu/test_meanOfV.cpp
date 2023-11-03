@@ -24,24 +24,22 @@ int main(int argc, char const *argv[])
         belong[i] = distribInt(gen);
     }
 
-    // float *mean = meanVec(original, belong, TEST_DIM, TEST_SIZE, 0);
-    float *temp;
+    float *mean = (float *)malloc(TEST_DIM * sizeof(float));
+    meanVec(mean, original, belong, TEST_DIM, TEST_SIZE, 0);
 
-    for (int i = 0; i < K; i++)
+    free(original);
+    free(belong);
+
+    for (int i = 0; i < TEST_DIM; i++)
     {
-        temp = meanVec(original, belong, TEST_DIM, TEST_SIZE, i);
-        for (int j = 0; j < TEST_DIM; j++)
+        if (mean[i] < 0 || mean[i] >= 1)
         {
-            printf("%d,%d: %f\n", i, j, temp[j]);
+            free(mean);
+            return -1;
         }
     }
 
-    // for (int i = 0; i < TEST_DIM; i++)
-    // {
-    //     printf("%d: %f\n", i, mean[i]);
-    //     if (mean[i] < 0 || mean[i] >= 1)
-    //         return -1;
-    // }
+    free(mean);
 
     return 0;
 }

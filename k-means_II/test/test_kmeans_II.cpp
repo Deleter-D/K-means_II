@@ -7,14 +7,11 @@
 
 int main(int argc, char const *argv[])
 {
-    // #ifdef __USE_CUDA__
-    //     cudaSetDevice(0);
-    // #endif
-
     std::random_device rd;
     std::mt19937 gen(rd());
     // std::uniform_real_distribution<float> distrib(0, 1);
-    std::normal_distribution<float> distrib(0, 30);
+    float st = 30.f;
+    std::normal_distribution<float> distrib(0, st);
 
     float *INPUT;
     INPUT = (float *)malloc(TEST_SIZE * TEST_DIM * sizeof(float));
@@ -28,18 +25,7 @@ int main(int argc, char const *argv[])
     op.init();
     op.iteration();
 
-    // #ifdef __USE_CUDA__
-    //     cudaDeviceReset();
-    // #endif
-
-    for (int i = 0; i < K * TEST_DIM; i++)
-    {
-        if (op.cluster_set[i] < 0 || op.cluster_set[i] >= 1)
-        {
-            printf("%f\t", op.cluster_set[i]);
-            // return -1;
-        }
-    }
+    free(INPUT);
 
     return 0;
 }

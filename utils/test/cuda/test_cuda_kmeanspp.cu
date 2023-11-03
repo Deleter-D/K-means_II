@@ -24,14 +24,26 @@ int main(int argc, char const *argv[])
         omega[i] = distrib(gen);
     }
 
-    float *cluster_final = kmeanspp(cluster_set, omega, K, TEST_DIM, TEST_SIZE);
-    float *cluster_final_cuda = cudaKmeanspp(cluster_set, omega, K, TEST_DIM, TEST_SIZE);
+    float *cluster_final = (float *)malloc(K * TEST_DIM * sizeof(float));
+    kmeanspp(cluster_final, cluster_set, omega, K, TEST_DIM, TEST_SIZE);
+    float *cluster_final_cuda = (float *)malloc(K * TEST_DIM * sizeof(float));
+    cudaKmeanspp(cluster_final_cuda, cluster_set, omega, K, TEST_DIM, TEST_SIZE);
+
+    free(omega);
+    free(cluster_set);
 
     for (int i = TEST_DIM; i < K * TEST_DIM; i++)
     {
         if (cluster_final[i] != cluster_final_cuda[i])
+        {
+            free(cluster_final);
+            free(cluster_final_cuda);
             return -1;
+        }
     }
+
+    free(cluster_final);
+    free(cluster_final_cuda);
 
     return 0;
 }

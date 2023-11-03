@@ -25,13 +25,25 @@ int main(int argc, char const *argv[])
     {
         set[i] = distrib(gen);
     }
-    float *distance_cuda = cudaEuclideanDistance(vec, set, TEST_DIM, TEST_SIZE);
+    float *distance_cuda = (float *)malloc(TEST_SIZE * sizeof(float));
+    cudaEuclideanDistance(distance_cuda, vec, set, TEST_DIM, TEST_SIZE);
+
+    float temp;
     for (int i = 0; i < TEST_SIZE; i++)
     {
-        float temp = euclideanDistance(vec, &set[i * TEST_DIM], TEST_DIM);
+        temp = euclideanDistance(vec, &set[i * TEST_DIM], TEST_DIM);
         if (abs(distance_cuda[i] - temp) > 1e-5)
+        {
+            free(vec);
+            free(set);
+            free(distance_cuda);
             return -1;
+        }
     }
+    
+    free(vec);
+    free(set);
+    free(distance_cuda);
 
     return 0;
 }

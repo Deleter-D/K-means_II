@@ -24,6 +24,9 @@ int main(int argc, char const *argv[])
 
     size_t index = belongV2S(x, S, TEST_DIM, TEST_SIZE);
 
+    free(x);
+    free(S);
+
     if (index < 0 || index >= TEST_SIZE)
         return -1;
 
