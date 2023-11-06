@@ -7,14 +7,33 @@
 #include <iostream>
 #include <cmath>
 
+#include <vector>
+#include <algorithm>
+#include <omp.h>
+#include <time.h>
+
 #include "../include/kmeans_II.h"
 #include "../../utils/include/common.h"
 #include "../../utils/include/common.cuh"
+
+#define DEBUG
+#define DEBUG_HEAD "\033[34m[Debug]: \033[0m"
+#define ERROR_HEAD "\033[31m[Error]: \033[0m"
 
 #define __USE_CUDA__
 
 void kmeans_II::init()
 {
+#ifdef DEBUG
+#ifdef _OPENMP
+    printf("%sopenmp is enabled.\n", DEBUG_HEAD);
+#else
+    printf("%sopenmp is not enabled\n", DEBUG_HEAD);
+#endif
+#endif
+    time_t start_time = 0;
+    time_t end_time = 0;
+    start_time = time(NULL);
     std::random_device rd;
     std::mt19937 gen(rd());
     std::uniform_int_distribution<> distrib(0, original_size - 1);
@@ -42,9 +61,13 @@ void kmeans_II::init()
     phi = costFromS2S(original_data, cluster_set, original_dim, original_size, current_k);
 #endif
 
-    // 存放概率值和索引的key-value对
-    std::multimap<float, size_t, std::greater<float>> probability;
+#ifdef DEBUG
+    printf("%sCompute phi finished.\n", DEBUG_HEAD);
+#endif
 
+    // 存放概率值和索引的key-value对
+    // std::multimap<float, size_t, std::greater<float>> probability;
+    std::vector<std::pair<float, size_t>> probability(original_size);
     // 迭代
     for (int i = 0; i < INIT_ITERATION_TIMES; i++)
     {
@@ -68,11 +91,21 @@ void kmeans_II::init()
 #endif
         }
         // 按从大到小的顺序记录"概率-索引"对
+        //  for (int j = 0; j < original_size; j++)
+        //  {
+        //      probability.insert({current_ps[j], j});
+        //  }
+#pragma omp parallel for
         for (int j = 0; j < original_size; j++)
         {
-            probability.insert({current_ps[j], j});
+// #ifdef DEBUG
+//             printf("%sThread id: %d.\n", DEBUG_HEAD, omp_get_thread_num());
+// #endif
+            probability[j] = std::make_pair(current_ps[j], j);
         }
         free(current_ps);
+        // 排序，只排序l个
+        std::partial_sort(probability.begin(), probability.begin() + OVER_SAMPLING, probability.end(), std::greater<std::pair<float, size_t>>());
 
         auto beg = probability.cbegin();
         auto end = probability.cend();
@@ -89,26 +122,40 @@ void kmeans_II::init()
             beg++;
         }
         probability.clear();
+#ifdef DEBUG
+        printf("%sThe %dth initial iteration finished.\n", DEBUG_HEAD, i);
+#endif
     }
 
     // 记录每个聚类中心的权重
     size_t *omega = (size_t *)malloc(current_k * sizeof(size_t));
     memset(omega, 0, current_k * sizeof(size_t));
-    // 记录每个向量归属的聚类中心索引
 
+    // 记录每个向量归属的聚类中心索引
     size_t *index_X2C = (size_t *)malloc(original_size * sizeof(size_t));
 #ifdef __USE_CUDA__
     cudaBelongS2S(index_X2C, original_data, cluster_set, original_dim, original_size, current_k);
 #else
     belongS2S(index_X2C, original_data, cluster_set, original_dim, original_size, current_k);
 #endif
-
+#pragma omp parallel for
     for (int i = 0; i < original_size; i++)
     {
-        omega[index_X2C[i]]++;
+        size_t index = index_X2C[i];
+#pragma omp atomic
+        omega[index]++;
     }
 
+    // for (int i = 0; i < original_size; i++)
+    // {
+    //     omega[index_X2C[i]]++;
+    // }
+
     free(index_X2C);
+
+#ifdef DEBUG
+    printf("%sCompute omega finished.\n", DEBUG_HEAD);
+#endif
 
     // 利用kmeans++获取最终聚类中心
     float *cluster_final = (float *)malloc(cluster_bytes);
@@ -119,9 +166,20 @@ void kmeans_II::init()
 #endif
     free(omega);
 
+#ifdef DEBUG
+    printf("%sK-means++ finished.\n", DEBUG_HEAD);
+#endif
+
     cluster_set = (float *)realloc(cluster_set, cluster_bytes);
     memcpy(cluster_set, cluster_final, cluster_bytes);
     free(cluster_final);
+
+#ifdef DEBUG
+    printf("%sintilization finished.\n", DEBUG_HEAD);
+#endif
+
+    end_time = time(NULL);
+    printf("耗时：%lds\n", end_time - start_time);
 }
 
 void kmeans_II::iteration()
@@ -173,10 +231,17 @@ void kmeans_II::iteration()
         // 删除
         printf("迭代%d\n", iteration_times);
         memset(temp_count, 0, K * sizeof(size_t));
+#pragma omp parallel for
         for (int i = 0; i < original_size; i++)
         {
-            temp_count[belong[i]]++;
+            size_t index = belong[i];
+#pragma omp atomic
+            temp_count[index]++;
         }
+        // for (int i = 0; i < original_size; i++)
+        // {
+        //     temp_count[belong[i]]++;
+        // }
         for (int i = 0; i < K; i++)
         {
             printf("%d: %ld个\n", i, temp_count[i]);
