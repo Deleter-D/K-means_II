@@ -16,7 +16,7 @@
 #include "../../utils/include/common.h"
 #include "../../utils/include/common.cuh"
 
-// #define DEBUG
+#define DEBUG
 
 #define __USE_CUDA__
 
@@ -65,7 +65,6 @@ void init(float *original_data, size_t original_size, size_t original_dim, float
 #endif
 
     // 存放概率值和索引的key-value对
-    // std::multimap<float, size_t, std::greater<float>> probability;
     std::vector<std::pair<float, size_t>> probability(original_size);
     // 迭代
     for (int i = 0; i < INIT_ITERATION_TIMES; i++)
@@ -89,20 +88,14 @@ void init(float *original_data, size_t original_size, size_t original_dim, float
             current_ps[j] = OVER_SAMPLING * costFromV2S(temp, cluster_set_temp, original_dim, current_k) / cost_set2cluster;
 #endif
         }
-        // 按从大到小的顺序记录"概率-索引"对
-        //  for (int j = 0; j < original_size; j++)
-        //  {
-        //      probability.insert({current_ps[j], j});
-        //  }
+
 #pragma omp parallel for
         for (int j = 0; j < original_size; j++)
         {
-            // #ifdef DEBUG
-            //             printf("%sThread id: %d.\n", DEBUG_HEAD, omp_get_thread_num());
-            // #endif
             probability[j] = std::make_pair(current_ps[j], j);
         }
         free(current_ps);
+
         // 排序，只排序l个
         std::partial_sort(probability.begin(), probability.begin() + OVER_SAMPLING, probability.end(), std::greater<std::pair<float, size_t>>());
 
@@ -144,11 +137,6 @@ void init(float *original_data, size_t original_size, size_t original_dim, float
 #pragma omp atomic
         omega[index]++;
     }
-
-    // for (int i = 0; i < original_size; i++)
-    // {
-    //     omega[index_X2C[i]]++;
-    // }
 
     free(index_X2C);
 
@@ -230,7 +218,6 @@ void iteration(float *original_data, size_t original_size, size_t original_dim, 
 #endif
 
 #ifdef DEBUG
-        // 删除
         printf("迭代%d\n", iteration_times);
         memset(temp_count, 0, K * sizeof(size_t));
 
@@ -240,10 +227,6 @@ void iteration(float *original_data, size_t original_size, size_t original_dim, 
 
             temp_count[index]++;
         }
-        // for (int i = 0; i < original_size; i++)
-        // {
-        //     temp_count[belong[i]]++;
-        // }
 
         for (int i = 0; i < K; i++)
         {
@@ -260,7 +243,7 @@ void iteration(float *original_data, size_t original_size, size_t original_dim, 
 #endif
 
 #ifdef DEBUG
-        printf("迭代结果%d: %s\n", iteration_times, isclose ? "close" : "not close"); // 删除
+        printf("迭代结果%d: %s\n", iteration_times, isclose ? "close" : "not close");
 #endif
 
     } while (!isclose && iteration_times < MAX_KMEANS_ITERATION_TIMES);
