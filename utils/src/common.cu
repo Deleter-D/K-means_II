@@ -2,6 +2,7 @@
 #include "../include/config.h"
 #include <stdio.h>
 #include <random>
+#include <omp.h>
 
 __global__ void euclideanDistanceKernel(float *distance, float *vec, float *set, float *temp, const int dim, const int size)
 {
@@ -92,6 +93,7 @@ float cudaCostFromV2S(float *vec, float *cluster_set, const int dim, const size_
 float cudaCostFromS2S(float *original_set, float *cluster_set, const int dim, const size_t original_size, const size_t cluster_size)
 {
     float *sums = (float *)malloc(original_size * sizeof(float));
+#pragma omp parallel for
     for (size_t i = 0; i < original_size; i++)
     {
         sums[i] = cudaCostFromV2S(&original_set[i * dim], cluster_set, dim, cluster_size);
@@ -99,6 +101,7 @@ float cudaCostFromS2S(float *original_set, float *cluster_set, const int dim, co
     cudaDeviceSynchronize();
 
     float sum = 0.0f;
+#pragma omp parallel for reduction(+ : sum)
     for (size_t i = 0; i < original_size; i++)
     {
         sum += sums[i];
@@ -134,6 +137,7 @@ size_t cudaBelongV2S(float *x, float *cluster_set, const int dim, const size_t s
 
 void cudaBelongS2S(size_t *index, float *original_set, float *cluster_set, const int dim, const size_t original_size, const size_t cluster_size)
 {
+#pragma omp parallel for
     for (size_t i = 0; i < original_size; i++)
     {
         index[i] = cudaBelongV2S(&original_set[i * dim], cluster_set, dim, cluster_size);
@@ -163,16 +167,20 @@ void cudaKmeanspp(float *cluster_final, float *cluster_set, size_t *omega, size_
         max_p = -1.0f;
         float cost_set2final = cudaCostFromS2S(cluster_set, cluster_final, dim, cluster_size, current_k);
         cudaDeviceSynchronize();
+#pragma omp parallel for
         for (size_t i = 0; i < cluster_size; i++)
         {
             // 计算当前向量的概率
             temp_p = omega[i] * cudaCostFromV2S(&cluster_set[i * dim], cluster_final, dim, current_k) / cost_set2final;
             cudaDeviceSynchronize();
-            // 记录概率最大的向量信息
-            if (temp_p > max_p)
+#pragma omp critical
             {
-                max_p = temp_p;
-                max_p_index = i;
+                // 记录概率最大的向量信息
+                if (temp_p > max_p)
+                {
+                    max_p = temp_p;
+                    max_p_index = i;
+                }
             }
         }
         // 将概率最大的向量并入最终聚类中心集

@@ -10,22 +10,28 @@ int main(int argc, char const *argv[])
     std::mt19937 gen(rd());
     std::uniform_real_distribution<float> distrib(0, 1);
 
-    float *INPUT;
+    float *INPUT, *cluster_set;
     INPUT = (float *)malloc(TEST_SIZE * TEST_DIM * sizeof(float));
+    cluster_set = (float *)malloc(K * TEST_DIM * sizeof(float));
     for (int i = 0; i < TEST_SIZE * TEST_DIM; i++)
     {
         INPUT[i] = distrib(gen);
     }
 
-    kmeans_II op(INPUT, TEST_SIZE, TEST_DIM, K);
+    init(INPUT, TEST_SIZE, TEST_DIM, cluster_set);
 
-    op.init();
+    free(INPUT);
 
     for (int i = 0; i < K * TEST_DIM; i++)
     {
-        if (op.cluster_set[i] < 0 || op.cluster_set[i] >= 1)
+        if (cluster_set[i] < 0 || cluster_set[i] >= 1)
+        {
+            printf("%d: %f\n", i, cluster_set[i]);
+            free(cluster_set);
             return -1;
+        }
     }
 
+    free(cluster_set);
     return 0;
 }

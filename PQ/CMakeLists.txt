@@ -1,0 +1,21 @@
+include_directories(./include)
+include_directories(${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES})
+
+add_library(PQ SHARED ./src/pq.cpp ./src/pq_util.cu)
+set_target_properties(PQ PROPERTIES CUDA_ARCHITECTURES "50;60;70;80")
+target_link_libraries(PQ common_utils)
+target_link_libraries(PQ common_utils_cuda)
+target_link_libraries(PQ k-means_II)
+target_link_libraries(PQ OpenMP::OpenMP_CXX)
+install(TARGETS PQ DESTINATION ${PROJECT_SOURCE_DIR}/install)
+
+add_executable(test_pq ./test/test_pq.cpp)
+target_link_libraries(test_pq PQ)
+set_target_properties(test_pq PROPERTIES CUDA_ARCHITECTURES "50;60;70;80")
+target_compile_options(test_pq PRIVATE -g)
+add_test(NAME test_pq COMMAND test_pq)
+
+add_executable(test_cuda_asym_dis ./test/test_cuda_asym_dis.cu)
+target_link_libraries(test_cuda_asym_dis PQ)
+set_target_properties(test_cuda_asym_dis PROPERTIES CUDA_ARCHITECTURES "50;60;70;80")
+add_test(NAME test_cuda_asym_dis COMMAND test_cuda_asym_dis)

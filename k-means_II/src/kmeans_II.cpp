@@ -16,13 +16,11 @@
 #include "../../utils/include/common.h"
 #include "../../utils/include/common.cuh"
 
-#define DEBUG
-#define DEBUG_HEAD "\033[34m[Debug]: \033[0m"
-#define ERROR_HEAD "\033[31m[Error]: \033[0m"
+// #define DEBUG
 
 #define __USE_CUDA__
 
-void kmeans_II::init()
+void init(float *original_data, size_t original_size, size_t original_dim, float *cluster_set)
 {
 #ifdef DEBUG
 #ifdef _OPENMP
@@ -43,22 +41,23 @@ void kmeans_II::init()
 
     size_t index = distrib(gen);
 
-    memset(cluster_set, 0, (OVER_SAMPLING * INIT_ITERATION_TIMES + 1) * vec_bytes);
+    float *cluster_set_temp = (float *)malloc((OVER_SAMPLING * INIT_ITERATION_TIMES + 1) * vec_bytes);
+    memset(cluster_set_temp, 0, (OVER_SAMPLING * INIT_ITERATION_TIMES + 1) * vec_bytes);
 
     // 记录聚类中心向量的全局索引
     std::set<size_t> center_index;
 
     // 将第一个聚类中心并入集合C
-    memcpy(cluster_set, &original_data[index * original_dim], vec_bytes);
-    current_k = 1;
+    memcpy(cluster_set_temp, &original_data[index * original_dim], vec_bytes);
+    size_t current_k = 1;
     center_index.insert(index); // 记录第一个聚类中心全局索引
 
     // 计算此时聚类中心集与全集的代价
     float phi;
 #ifdef __USE_CUDA__
-    phi = cudaCostFromS2S(original_data, cluster_set, original_dim, original_size, current_k);
+    phi = cudaCostFromS2S(original_data, cluster_set_temp, original_dim, original_size, current_k);
 #else
-    phi = costFromS2S(original_data, cluster_set, original_dim, original_size, current_k);
+    phi = costFromS2S(original_data, cluster_set_temp, original_dim, original_size, current_k);
 #endif
 
 #ifdef DEBUG
@@ -74,9 +73,9 @@ void kmeans_II::init()
 
         float cost_set2cluster;
 #ifdef __USE_CUDA__
-        cost_set2cluster = cudaCostFromS2S(original_data, cluster_set, original_dim, original_size, current_k);
+        cost_set2cluster = cudaCostFromS2S(original_data, cluster_set_temp, original_dim, original_size, current_k);
 #else
-        cost_set2cluster = costFromS2S(original_data, cluster_set, original_dim, original_size, current_k);
+        cost_set2cluster = costFromS2S(original_data, cluster_set_temp, original_dim, original_size, current_k);
 #endif
 
         // 计算所有向量的概率
@@ -85,9 +84,9 @@ void kmeans_II::init()
         {
             float *temp = &original_data[j * original_dim];
 #ifdef __USE_CUDA__
-            current_ps[j] = OVER_SAMPLING * cudaCostFromV2S(temp, cluster_set, original_dim, current_k) / cost_set2cluster;
+            current_ps[j] = OVER_SAMPLING * cudaCostFromV2S(temp, cluster_set_temp, original_dim, current_k) / cost_set2cluster;
 #else
-            current_ps[j] = OVER_SAMPLING * costFromV2S(temp, cluster_set, original_dim, current_k) / cost_set2cluster;
+            current_ps[j] = OVER_SAMPLING * costFromV2S(temp, cluster_set_temp, original_dim, current_k) / cost_set2cluster;
 #endif
         }
         // 按从大到小的顺序记录"概率-索引"对
@@ -98,9 +97,9 @@ void kmeans_II::init()
 #pragma omp parallel for
         for (int j = 0; j < original_size; j++)
         {
-// #ifdef DEBUG
-//             printf("%sThread id: %d.\n", DEBUG_HEAD, omp_get_thread_num());
-// #endif
+            // #ifdef DEBUG
+            //             printf("%sThread id: %d.\n", DEBUG_HEAD, omp_get_thread_num());
+            // #endif
             probability[j] = std::make_pair(current_ps[j], j);
         }
         free(current_ps);
@@ -115,7 +114,7 @@ void kmeans_II::init()
             auto temp_index = beg->second;
             if (beg != end && !center_index.count(temp_index))
             {
-                memcpy(&cluster_set[original_dim * current_k], &original_data[temp_index * original_dim], vec_bytes);
+                memcpy(&cluster_set_temp[original_dim * current_k], &original_data[temp_index * original_dim], vec_bytes);
                 current_k++;                     // 聚类中心当前数量自增
                 center_index.insert(temp_index); // 记录并入聚类中心集的全局索引
             }
@@ -134,9 +133,9 @@ void kmeans_II::init()
     // 记录每个向量归属的聚类中心索引
     size_t *index_X2C = (size_t *)malloc(original_size * sizeof(size_t));
 #ifdef __USE_CUDA__
-    cudaBelongS2S(index_X2C, original_data, cluster_set, original_dim, original_size, current_k);
+    cudaBelongS2S(index_X2C, original_data, cluster_set_temp, original_dim, original_size, current_k);
 #else
-    belongS2S(index_X2C, original_data, cluster_set, original_dim, original_size, current_k);
+    belongS2S(index_X2C, original_data, cluster_set_temp, original_dim, original_size, current_k);
 #endif
 #pragma omp parallel for
     for (int i = 0; i < original_size; i++)
@@ -160,17 +159,17 @@ void kmeans_II::init()
     // 利用kmeans++获取最终聚类中心
     float *cluster_final = (float *)malloc(cluster_bytes);
 #ifdef __USE_CUDA__
-    cudaKmeanspp(cluster_final, cluster_set, omega, K, original_dim, current_k);
+    cudaKmeanspp(cluster_final, cluster_set_temp, omega, K, original_dim, current_k);
 #else
-    kmeanspp(cluster_final, cluster_set, omega, K, original_dim, current_k);
+    kmeanspp(cluster_final, cluster_set_temp, omega, K, original_dim, current_k);
 #endif
     free(omega);
+    free(cluster_set_temp);
 
 #ifdef DEBUG
     printf("%sK-means++ finished.\n", DEBUG_HEAD);
 #endif
 
-    cluster_set = (float *)realloc(cluster_set, cluster_bytes);
     memcpy(cluster_set, cluster_final, cluster_bytes);
     free(cluster_final);
 
@@ -179,10 +178,12 @@ void kmeans_II::init()
 #endif
 
     end_time = time(NULL);
+#ifdef DEBUG
     printf("耗时：%lds\n", end_time - start_time);
+#endif
 }
 
-void kmeans_II::iteration()
+void iteration(float *original_data, size_t original_size, size_t original_dim, float *cluster_set)
 {
     size_t vec_bytes = original_dim * sizeof(float);
     size_t cluster_bytes = K * vec_bytes;
@@ -228,24 +229,27 @@ void kmeans_II::iteration()
         belongS2S(belong, original_data, cluster_new, original_dim, original_size, K);
 #endif
 
+#ifdef DEBUG
         // 删除
         printf("迭代%d\n", iteration_times);
         memset(temp_count, 0, K * sizeof(size_t));
-#pragma omp parallel for
+
         for (int i = 0; i < original_size; i++)
         {
             size_t index = belong[i];
-#pragma omp atomic
+
             temp_count[index]++;
         }
         // for (int i = 0; i < original_size; i++)
         // {
         //     temp_count[belong[i]]++;
         // }
+
         for (int i = 0; i < K; i++)
         {
             printf("%d: %ld个\n", i, temp_count[i]);
         }
+#endif
 
         iteration_times++;
 
@@ -254,8 +258,18 @@ void kmeans_II::iteration()
 #else
         isclose = isClose(cluster_new, cluster_set, original_dim, K, THRESHOLD);
 #endif
+
+#ifdef DEBUG
         printf("迭代结果%d: %s\n", iteration_times, isclose ? "close" : "not close"); // 删除
+#endif
+
     } while (!isclose && iteration_times < MAX_KMEANS_ITERATION_TIMES);
 
     free(belong);
+}
+
+void kmeansII(float *original_data, size_t original_size, size_t original_dim, float *cluster_set)
+{
+    init(original_data, original_size, original_dim, cluster_set);
+    iteration(original_data, original_size, original_dim, cluster_set);
 }

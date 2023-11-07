@@ -13,19 +13,19 @@ int main(int argc, char const *argv[])
     float st = 30.f;
     std::normal_distribution<float> distrib(0, st);
 
-    float *INPUT;
+    float *INPUT, *cluster_set;
     INPUT = (float *)malloc(TEST_SIZE * TEST_DIM * sizeof(float));
+    cluster_set = (float *)malloc(K * TEST_DIM * sizeof(float));
     for (int i = 0; i < TEST_SIZE * TEST_DIM; i++)
     {
         INPUT[i] = distrib(gen);
     }
 
-    kmeans_II op(INPUT, TEST_SIZE, TEST_DIM, K);
-
-    op.init();
-    op.iteration();
+    init(INPUT, TEST_SIZE, TEST_DIM, cluster_set);
+    iteration(INPUT, TEST_SIZE, TEST_DIM, cluster_set);
 
     free(INPUT);
+    free(cluster_set);
 
     return 0;
 }

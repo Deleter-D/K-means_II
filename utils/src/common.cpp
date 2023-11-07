@@ -132,3 +132,51 @@ bool isClose(float *cluster_new, float *cluster_old, const int dim, const size_t
     }
     return true;
 }
+
+void save(float *data, size_t size, const std::string &filename)
+{
+    std::ofstream outFile(filename, std::ios::out | std::ios::binary);
+    if (!outFile)
+    {
+        std::cerr << ERROR_HEAD << "Can not open file." << std::endl;
+        return;
+    }
+    outFile.write(reinterpret_cast<const char *>(data), size * sizeof(float));
+    outFile.close();
+}
+
+void load(float *data, size_t size, const std::string &filename)
+{
+    std::ifstream inFile(filename, std::ios::in | std::ios::binary);
+    if (!inFile)
+    {
+        std::cerr << ERROR_HEAD << "Can not open file." << std::endl;
+        return;
+    }
+    inFile.read(reinterpret_cast<char *>(data), size * sizeof(float));
+    inFile.close();
+}
+
+void save(size_t *data, size_t size, const std::string &filename)
+{
+    std::ofstream outFile(filename, std::ios::out | std::ios::binary);
+    if (!outFile)
+    {
+        std::cerr << ERROR_HEAD << "Can not open file." << std::endl;
+        return;
+    }
+    outFile.write(reinterpret_cast<const char *>(data), size * sizeof(size_t));
+    outFile.close();
+}
+
+void load(size_t *data, size_t size, const std::string &filename)
+{
+    std::ifstream inFile(filename, std::ios::in | std::ios::binary);
+    if (!inFile)
+    {
+        std::cerr << ERROR_HEAD << "Can not open file." << std::endl;
+        return;
+    }
+    inFile.read(reinterpret_cast<char *>(data), size * sizeof(size_t));
+    inFile.close();
+}

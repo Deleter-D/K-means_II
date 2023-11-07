@@ -11,3 +11,4 @@ enable_testing()
 
 add_subdirectory(./utils)
 add_subdirectory(./k-means_II)
+add_subdirectory(./PQ)

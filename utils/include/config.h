@@ -1,5 +1,6 @@
 #pragma once
 
+// k-means超参数
 #define INIT_ITERATION_TIMES 5
 #define K 300
 #define OVER_SAMPLING 2 * K
@@ -8,4 +9,6 @@
 
 // 仅用于测试
 #define TEST_SIZE 1000000
+#define TEST_TOTAL_DIM 96
 #define TEST_DIM 16
+#define TOPK 100
