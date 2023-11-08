@@ -19,3 +19,8 @@ add_executable(test_cuda_asym_dis ./test/test_cuda_asym_dis.cu)
 target_link_libraries(test_cuda_asym_dis PQ)
 set_target_properties(test_cuda_asym_dis PROPERTIES CUDA_ARCHITECTURES "50;60;70;80")
 add_test(NAME test_cuda_asym_dis COMMAND test_cuda_asym_dis)
+
+add_executable(test_product_quantization ./test/test_product_quantization.cu)
+target_link_libraries(test_product_quantization PQ)
+set_target_properties(test_product_quantization PROPERTIES CUDA_ARCHITECTURES "50;60;70;80")
+add_test(NAME test_product_quantization COMMAND test_product_quantization)

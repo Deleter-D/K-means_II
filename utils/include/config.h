@@ -2,13 +2,14 @@
 
 // k-means超参数
 #define INIT_ITERATION_TIMES 5
-#define K 300
+#define K 30000
 #define OVER_SAMPLING 2 * K
 #define THRESHOLD 0.0001f
 #define MAX_KMEANS_ITERATION_TIMES 100
 
 // 仅用于测试
-#define TEST_SIZE 1000000
+#define TEST_SIZE 1000
 #define TEST_TOTAL_DIM 96
-#define TEST_DIM 16
+#define TEST_DIM 32
 #define TOPK 100
+#define M 3

@@ -1,5 +1,6 @@
 #include <random>
 #include <cstring>
+#include <omp.h>
 #include "../include/pq.h"
 
 int main(int argc, char const *argv[])
@@ -10,14 +11,17 @@ int main(int argc, char const *argv[])
 
     float *S1, *input;
     size_t *res;
-    S1 = (float *)malloc(TEST_SIZE * TEST_TOTAL_DIM * sizeof(float));
+    size_t s1_bytes = size_t(TEST_SIZE) * TEST_TOTAL_DIM * sizeof(float);
+    S1 = (float *)malloc(s1_bytes);
     input = (float *)malloc(TEST_TOTAL_DIM * sizeof(float));
     res = (size_t *)malloc(TOPK * sizeof(size_t));
 
-    for (int i = 0; i < TEST_SIZE * TEST_TOTAL_DIM; i++)
+#pragma omp parallel for
+    for (size_t i = 0; i < size_t(TEST_SIZE) * TEST_TOTAL_DIM; i++)
     {
         S1[i] = distrib(gen);
     }
+#pragma omp parallel for
     for (int i = 0; i < TEST_TOTAL_DIM; i++)
     {
         input[i] = distrib(gen);

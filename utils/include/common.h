@@ -21,6 +21,7 @@ bool isClose(float *cluster_new, float *cluster_old, const int dim, const size_t
 
 void save(float *data, size_t size, const std::string &filename);
 void load(float *data, size_t size, const std::string &filename);
-
 void save(size_t *data, size_t size, const std::string &filename);
 void load(size_t *data, size_t size, const std::string &filename);
+
+void split_file(const std::string &filename, size_t size, int dim, unsigned int m);

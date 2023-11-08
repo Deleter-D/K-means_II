@@ -43,6 +43,10 @@ add_executable(test_save_load ./test/cpu/test_save_load.cpp)
 target_link_libraries(test_save_load common_utils)
 add_test(NAME test_save_load COMMAND test_save_load)
 
+add_executable(test_split_file ./test/cpu/test_split_file.cpp)
+target_link_libraries(test_split_file common_utils)
+add_test(NAME test_split_file COMMAND test_split_file)
+
 add_executable(test_cuda_euclidean ./test/cuda/test_cuda_euclidean.cu)
 target_link_libraries(test_cuda_euclidean common_utils common_utils_cuda)
 set_target_properties(test_cuda_euclidean PROPERTIES CUDA_ARCHITECTURES "50;60;70;80")

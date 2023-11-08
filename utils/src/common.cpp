@@ -1,6 +1,10 @@
 #include <math.h>
 #include <random>
 #include <cstring>
+#include <sys/mman.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <unistd.h>
 #include "../include/common.h"
 
 float euclideanDistance(float *x, float *y, const int dim)
@@ -135,10 +139,10 @@ bool isClose(float *cluster_new, float *cluster_old, const int dim, const size_t
 
 void save(float *data, size_t size, const std::string &filename)
 {
-    std::ofstream outFile(filename, std::ios::out | std::ios::binary);
+    std::ofstream outFile(filename, std::ios::out | std::ios::binary | std::ios::app);
     if (!outFile)
     {
-        std::cerr << ERROR_HEAD << "Can not open file." << std::endl;
+        std::cerr << ERROR_HEAD << "Can not open file to save." << std::endl;
         return;
     }
     outFile.write(reinterpret_cast<const char *>(data), size * sizeof(float));
@@ -150,7 +154,7 @@ void load(float *data, size_t size, const std::string &filename)
     std::ifstream inFile(filename, std::ios::in | std::ios::binary);
     if (!inFile)
     {
-        std::cerr << ERROR_HEAD << "Can not open file." << std::endl;
+        std::cerr << ERROR_HEAD << "Can not open file to load." << std::endl;
         return;
     }
     inFile.read(reinterpret_cast<char *>(data), size * sizeof(float));
@@ -159,10 +163,10 @@ void load(float *data, size_t size, const std::string &filename)
 
 void save(size_t *data, size_t size, const std::string &filename)
 {
-    std::ofstream outFile(filename, std::ios::out | std::ios::binary);
+    std::ofstream outFile(filename, std::ios::out | std::ios::binary | std::ios::app);
     if (!outFile)
     {
-        std::cerr << ERROR_HEAD << "Can not open file." << std::endl;
+        std::cerr << ERROR_HEAD << "Can not open file to save." << std::endl;
         return;
     }
     outFile.write(reinterpret_cast<const char *>(data), size * sizeof(size_t));
@@ -174,9 +178,92 @@ void load(size_t *data, size_t size, const std::string &filename)
     std::ifstream inFile(filename, std::ios::in | std::ios::binary);
     if (!inFile)
     {
-        std::cerr << ERROR_HEAD << "Can not open file." << std::endl;
+        std::cerr << ERROR_HEAD << "Can not open file to load." << std::endl;
         return;
     }
     inFile.read(reinterpret_cast<char *>(data), size * sizeof(size_t));
     inFile.close();
+}
+
+void split_file(const std::string &filename, size_t size, int dim, unsigned int m)
+{
+    std::cout << sysconf(_SC_PAGESIZE) << std::endl;
+
+    int input_file = open(filename.c_str(), O_RDWR);
+    struct stat input_file_sb;
+
+    if (input_file == -1)
+    {
+        std::cerr << ERROR_HEAD << "Can not open file to split." << std::endl;
+        return;
+    }
+
+    if (fstat(input_file, &input_file_sb) == -1)
+    {
+        std::cerr << ERROR_HEAD << "Can not get file size." << std::endl;
+        return;
+    }
+    float *mapped_data = (float *)mmap(NULL, input_file_sb.st_size, PROT_READ | PROT_WRITE, MAP_SHARED, input_file, 0);
+    if (mapped_data == MAP_FAILED)
+    {
+        close(input_file);
+        std::cerr << ERROR_HEAD << "Can not map file to memory." << std::endl;
+        return;
+    }
+    close(input_file);
+
+    int subset_dim = dim / m;
+    long int output_file_length = input_file_sb.st_size / m;
+    int *output_files = (int *)malloc(m * sizeof(int));
+    float **mapped_output_data = (float **)malloc(m * sizeof(float *));
+    for (int i = 0; i < m; i++)
+    {
+        std::string output_filename("subset" + std::to_string(i));
+        output_files[i] = open(output_filename.c_str(), O_CREAT | O_RDWR | O_TRUNC, 0664);
+        if (output_files[i] == -1)
+        {
+            std::cerr << ERROR_HEAD << "Can not open output file to split." << std::endl;
+            return;
+        }
+        truncate(output_filename.c_str(), output_file_length);
+        int temp = write(output_files[i], " ", 1);
+        if (temp == -1)
+        {
+            close(output_files[i]);
+            std::cerr << ERROR_HEAD << "Can not write output file." << std::endl;
+            return;
+        }
+        mapped_output_data[i] = (float *)mmap(NULL, output_file_length, PROT_READ | PROT_WRITE, MAP_SHARED, output_files[i], 0);
+        if (mapped_output_data[i] == MAP_FAILED)
+        {
+            close(output_files[i]);
+            std::cerr << ERROR_HEAD << "Can not map output file to memory." << std::endl;
+            return;
+        }
+        close(output_files[i]);
+    }
+#pragma omp parallel for collapse(2)
+    for (unsigned int i = 0; i < m; i++)
+    {
+        for (size_t j = 0; j < size; j++)
+        {
+            memcpy(&mapped_output_data[i][j * subset_dim], &mapped_data[j * dim + i * subset_dim], subset_dim * sizeof(float));
+        }
+    }
+
+    for (int i = 0; i < m; i++)
+    {
+        if (munmap(mapped_output_data[i], output_file_length) == -1)
+        {
+            std::cerr << ERROR_HEAD << "Can not unmap output file from memory." << std::endl;
+        }
+    }
+
+    if (munmap(mapped_data, input_file_sb.st_size) == -1)
+    {
+        std::cerr << ERROR_HEAD << "Can not unmap file from memory." << std::endl;
+    }
+
+    free(output_files);
+    free(mapped_output_data);
 }
