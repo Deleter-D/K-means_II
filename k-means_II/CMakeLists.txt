@@ -5,7 +5,7 @@ add_library(k-means_II SHARED ./src/kmeans_II.cpp)
 target_link_libraries(k-means_II common_utils)
 target_link_libraries(k-means_II common_utils_cuda)
 target_link_libraries(k-means_II OpenMP::OpenMP_CXX)
-install(TARGETS k-means_II DESTINATION ${PROJECT_SOURCE_DIR}/install)
+install(TARGETS k-means_II DESTINATION lib)
 
 add_executable(test_init ./test/test_init.cpp)
 target_link_libraries(test_init k-means_II)

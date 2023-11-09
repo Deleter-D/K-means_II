@@ -7,7 +7,7 @@ target_link_libraries(PQ common_utils)
 target_link_libraries(PQ common_utils_cuda)
 target_link_libraries(PQ k-means_II)
 target_link_libraries(PQ OpenMP::OpenMP_CXX)
-install(TARGETS PQ DESTINATION ${PROJECT_SOURCE_DIR}/install)
+install(TARGETS PQ DESTINATION lib)
 
 add_executable(test_cuda_asym_dis ./test/test_cuda_asym_dis.cu)
 target_link_libraries(test_cuda_asym_dis PQ)
