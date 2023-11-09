@@ -187,8 +187,6 @@ void load(size_t *data, size_t size, const std::string &filename)
 
 void split_file(const std::string &filename, size_t size, int dim, unsigned int m)
 {
-    std::cout << sysconf(_SC_PAGESIZE) << std::endl;
-
     int input_file = open(filename.c_str(), O_RDWR);
     struct stat input_file_sb;
 
@@ -216,6 +214,8 @@ void split_file(const std::string &filename, size_t size, int dim, unsigned int 
     long int output_file_length = input_file_sb.st_size / m;
     int *output_files = (int *)malloc(m * sizeof(int));
     float **mapped_output_data = (float **)malloc(m * sizeof(float *));
+
+#pragma omp parallel for
     for (int i = 0; i < m; i++)
     {
         std::string output_filename("subset" + std::to_string(i));
@@ -251,6 +251,7 @@ void split_file(const std::string &filename, size_t size, int dim, unsigned int 
         }
     }
 
+#pragma omp parallel for
     for (int i = 0; i < m; i++)
     {
         if (munmap(mapped_output_data[i], output_file_length) == -1)

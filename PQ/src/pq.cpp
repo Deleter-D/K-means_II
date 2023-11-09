@@ -195,7 +195,7 @@ void build(float *original_data, size_t original_size, int original_dim, unsigne
     free(indices);
 }
 
-void productQuantization(std::string &filename, size_t original_size, int original_dim, unsigned int m)
+void productQuantizationBuild(std::string &filename, size_t original_size, int original_dim, unsigned int m)
 {
     split_file(filename, original_size, original_dim, m);
 
@@ -204,7 +204,7 @@ void productQuantization(std::string &filename, size_t original_size, int origin
 #pragma omp parallel for
     for (unsigned int i = 0; i < m; i++)
     {
-        int fd = open(("subset" + std::to_string(m)).c_str(), O_RDONLY);
+        int fd = open(("subset" + std::to_string(i)).c_str(), O_RDONLY);
         struct stat sb;
         bool error_flag = false;
 
@@ -214,31 +214,31 @@ void productQuantization(std::string &filename, size_t original_size, int origin
             error_flag = true;
         }
 
-        if (!error_flag || fstat(fd, &sb) == -1)
+        if (error_flag || fstat(fd, &sb) == -1)
         {
             std::cerr << ERROR_HEAD << "Can not get file size." << std::endl;
             error_flag = true;
         }
 
         float *mapped_data;
-        if (!error_flag)
+        if (error_flag)
         {
             mapped_data = (float *)mmap(NULL, sb.st_size, PROT_READ, MAP_SHARED, fd, 0);
         }
 
-        if (!error_flag || mapped_data == MAP_FAILED)
+        if (error_flag || mapped_data == MAP_FAILED)
         {
             close(fd);
             std::cerr << ERROR_HEAD << "Can not map file to memory." << std::endl;
             error_flag = true;
         }
 
-        if (!error_flag)
+        if (error_flag)
         {
             build(mapped_data, original_size, subset_dim, i);
         }
 
-        if (!error_flag || munmap(mapped_data, sb.st_size) == -1)
+        if (error_flag || munmap(mapped_data, sb.st_size) == -1)
         {
             std::cerr << ERROR_HEAD << "Can not unmap file from memory." << std::endl;
         }

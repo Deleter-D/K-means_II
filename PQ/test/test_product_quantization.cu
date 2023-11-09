@@ -22,7 +22,7 @@ int main(int argc, char const *argv[])
     std::string filename("original_data");
     save(S1, size_t(TEST_SIZE) * TEST_TOTAL_DIM, filename);
 
-    productQuantization(filename, TEST_SIZE, TEST_TOTAL_DIM, M);
+    productQuantizationBuild(filename, TEST_SIZE, TEST_TOTAL_DIM, M);
 
     free(S1);
 

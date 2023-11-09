@@ -30,7 +30,7 @@ int main(int argc, char const *argv[])
     for (unsigned int i = 0; i < M; i++)
     {
         subsets[i] = (float *)malloc(TEST_SIZE * TEST_DIM * sizeof(float));
-        load(subsets[i], TEST_SIZE, "subset" + std::to_string(i));
+        load(subsets[i], TEST_SIZE * TEST_DIM, "subset" + std::to_string(i));
     }
 
     for (unsigned int i = 0; i < M; i++)

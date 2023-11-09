@@ -12,4 +12,4 @@ void build(float *original_data, size_t original_size, int original_dim, unsigne
 
 void query(size_t *result, float *input, size_t original_size, int original_dim, unsigned int m, unsigned int topk);
 
-void productQuantization(std::string &filename, size_t original_size, int original_dim, unsigned int m);
+void productQuantizationBuild(std::string &filename, size_t original_size, int original_dim, unsigned int m);
