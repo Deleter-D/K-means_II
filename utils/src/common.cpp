@@ -139,7 +139,7 @@ bool isClose(float *cluster_new, float *cluster_old, const int dim, const size_t
 
 void save(float *data, size_t size, const std::string &filename)
 {
-    std::ofstream outFile(filename, std::ios::out | std::ios::binary | std::ios::app);
+    std::ofstream outFile(filename, std::ios::out | std::ios::binary);
     if (!outFile)
     {
         std::cerr << ERROR_HEAD << "Can not open file to save." << std::endl;
@@ -163,7 +163,7 @@ void load(float *data, size_t size, const std::string &filename)
 
 void save(size_t *data, size_t size, const std::string &filename)
 {
-    std::ofstream outFile(filename, std::ios::out | std::ios::binary | std::ios::app);
+    std::ofstream outFile(filename, std::ios::out | std::ios::binary);
     if (!outFile)
     {
         std::cerr << ERROR_HEAD << "Can not open file to save." << std::endl;

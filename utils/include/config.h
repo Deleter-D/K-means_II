@@ -11,5 +11,5 @@
 #define TEST_SIZE 1000
 #define TEST_TOTAL_DIM 96
 #define TEST_DIM 32
-#define TOPK 100
+#define TOPK 10
 #define M 3

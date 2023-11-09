@@ -28,7 +28,7 @@ int main(int argc, char const *argv[])
         distance_tab[i] = distrib(gen);
     }
 
-    getAsymmetricDistance(distance_cuda, distance_tab, index, TEST_SIZE);
+    cudaGetAsymmetricDistance(distance_cuda, distance_tab, index, TEST_SIZE);
 
     for (size_t i = 0; i < TEST_SIZE; i++)
     {

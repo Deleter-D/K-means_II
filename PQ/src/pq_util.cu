@@ -13,7 +13,7 @@ __global__ void getAsymmetricDistanceKernel(float *distance, float *distance_tab
     }
 }
 
-void getAsymmetricDistance(float *distance, float *distance_tab, size_t *index, const size_t size)
+void cudaGetAsymmetricDistance(float *distance, float *distance_tab, size_t *index, const size_t size)
 {
     cudaStream_t stream;
     cudaStreamCreate(&stream);
