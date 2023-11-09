@@ -107,9 +107,9 @@ void query(size_t *result, float *input, float **clusters, size_t **indices, siz
     }
 }
 
-void productQuantizationBuild(std::string &filename, size_t original_size, int original_dim, unsigned int m)
+void productQuantizationBuild(float *original_data, size_t original_size, int original_dim, unsigned int m)
 {
-    split_file(filename, original_size, original_dim, m);
+    split_file(original_data, original_size, original_dim, m);
 
     size_t subset_dim = original_dim / m;
 
@@ -157,32 +157,11 @@ void productQuantizationBuild(std::string &filename, size_t original_size, int o
     }
 }
 
-void productQuantizationQuery(size_t *result, float *input, size_t input_size, size_t original_size, int orininal_dim, unsigned int m, unsigned int topk)
+void productQuantizationQuery(size_t *result, float *input, float **clusters, size_t **indices, size_t input_size, size_t original_size, int orininal_dim, unsigned int m, unsigned int topk)
 {
-    float **clusters = (float **)malloc(m * sizeof(float *));
-    size_t **indices = (size_t **)malloc(m * sizeof(size_t *));
-    size_t sub_dim = orininal_dim / m;
-#pragma omp parallel for
-    for (int i = 0; i < m; i++)
-    {
-        clusters[i] = (float *)malloc(K * sub_dim * sizeof(float));
-        indices[i] = (size_t *)malloc(original_size * sizeof(size_t));
-        load(clusters[i], K * sub_dim, "cluster" + std::to_string(i));
-        load(indices[i], original_size, "index" + std::to_string(i));
-    }
-
 #pragma omp parallel for
     for (size_t i = 0; i < input_size; i++)
     {
         query(&result[i * topk], &input[i * orininal_dim], clusters, indices, original_size, orininal_dim, m, topk);
     }
-
-#pragma omp parallel for
-    for (int i = 0; i < m; i++)
-    {
-        free(clusters[i]);
-        free(indices[i]);
-    }
-    free(clusters);
-    free(indices);
 }

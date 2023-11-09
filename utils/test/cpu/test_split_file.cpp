@@ -21,10 +21,7 @@ int main(int argc, char const *argv[])
         S1[i] = distrib(gen);
     }
 
-    std::string filename("original_data");
-    save(S1, TEST_SIZE * TEST_TOTAL_DIM, filename);
-
-    split_file(filename, TEST_SIZE, TEST_TOTAL_DIM, M);
+    split_file(S1, TEST_SIZE, TEST_TOTAL_DIM, M);
 
     float **subsets = (float **)malloc(M * sizeof(float *));
     for (unsigned int i = 0; i < M; i++)

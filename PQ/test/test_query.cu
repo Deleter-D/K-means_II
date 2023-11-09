@@ -19,10 +19,7 @@ int main(int argc, char const *argv[])
         S1[i] = distrib(gen);
     }
 
-    std::string filename("original_data");
-    save(S1, size_t(TEST_SIZE) * TEST_TOTAL_DIM, filename);
-
-    productQuantizationBuild(filename, TEST_SIZE, TEST_TOTAL_DIM, M);
+    productQuantizationBuild(S1, TEST_SIZE, TEST_TOTAL_DIM, M);
 
     float *input = (float *)malloc(TEST_TOTAL_DIM * sizeof(float));
     size_t *result = (size_t *)malloc(TOPK * sizeof(size_t));

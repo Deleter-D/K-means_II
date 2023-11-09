@@ -19,10 +19,7 @@ int main(int argc, char const *argv[])
         S1[i] = distrib(gen);
     }
 
-    std::string filename("original_data");
-    save(S1, size_t(TEST_SIZE) * TEST_TOTAL_DIM, filename);
-
-    productQuantizationBuild(filename, TEST_SIZE, TEST_TOTAL_DIM, M);
+    productQuantizationBuild(S1, TEST_SIZE, TEST_TOTAL_DIM, M);
 
     free(S1);
 

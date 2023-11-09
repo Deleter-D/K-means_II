@@ -15,29 +15,49 @@ int main(int argc, char const *argv[])
     size_t s1_bytes = size_t(TEST_SIZE) * TEST_TOTAL_DIM * sizeof(float);
     S1 = (float *)malloc(s1_bytes);
 
-    // #pragma omp parallel for
+#pragma omp parallel for
     for (size_t i = 0; i < size_t(TEST_SIZE) * TEST_TOTAL_DIM; i++)
     {
         S1[i] = normal(gen);
     }
 
-    std::string filename("original_data");
-    save(S1, size_t(TEST_SIZE) * TEST_TOTAL_DIM, filename);
+    productQuantizationBuild(S1, TEST_SIZE, TEST_TOTAL_DIM, M);
 
-    productQuantizationBuild(filename, TEST_SIZE, TEST_TOTAL_DIM, M);
+    free(S1);
 
-    float *input = (float *)malloc(10 * TEST_TOTAL_DIM * sizeof(float));
-    size_t *result = (size_t *)malloc(10 * TOPK * sizeof(size_t));
-    // #pragma omp parallel for
-    for (int i = 0; i < 10 * TEST_TOTAL_DIM; i++)
+    size_t input_size = 10;
+    float *input = (float *)malloc(input_size * TEST_TOTAL_DIM * sizeof(float));
+    size_t *result = (size_t *)malloc(input_size * TOPK * sizeof(size_t));
+#pragma omp parallel for
+    for (int i = 0; i < input_size * TEST_TOTAL_DIM; i++)
     {
         input[i] = normal(gen);
     }
-    memset(result, 0, 10 * TOPK * sizeof(size_t));
+    memset(result, 0, input_size * TOPK * sizeof(size_t));
 
-    productQuantizationQuery(result, input, 10, TEST_SIZE, TEST_TOTAL_DIM, M, TOPK);
+    float **clusters = (float **)malloc(M * sizeof(float *));
+    size_t **indices = (size_t **)malloc(M * sizeof(size_t *));
 
-    for (int i = 0; i < 10 * TOPK; i++)
+    for (int i = 0; i < M; i++)
+    {
+        clusters[i] = (float *)malloc(K * TEST_DIM * sizeof(float));
+        indices[i] = (size_t *)malloc(TEST_SIZE * sizeof(size_t));
+        load(clusters[i], K * TEST_DIM, "cluster" + std::to_string(i));
+        load(indices[i], TEST_SIZE, "index" + std::to_string(i));
+    }
+
+    productQuantizationQuery(result, input, clusters, indices, input_size, TEST_SIZE, TEST_TOTAL_DIM, M, TOPK);
+
+    for (int i = 0; i < M; i++)
+    {
+        free(clusters[i]);
+        free(indices[i]);
+    }
+    free(clusters);
+    free(indices);
+    free(input);
+
+    for (int i = 0; i < input_size * TOPK; i++)
     {
         printf("%ld\t", result[i]);
         if (i != 0 && (i + 1) % TOPK == 0)
@@ -46,8 +66,6 @@ int main(int argc, char const *argv[])
         }
     }
 
-    free(S1);
-    free(input);
     free(result);
 
     return 0;

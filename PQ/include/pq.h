@@ -12,5 +12,5 @@ void build(float *original_data, size_t original_size, int original_dim, unsigne
 void subQuery(float *distance, float *input, float *cluster, size_t *index, size_t original_size, int dim);
 void query(size_t *result, float *input, float **clusters, size_t **indices, size_t original_size, int dim, unsigned int m, unsigned int topk);
 
-void productQuantizationBuild(std::string &filename, size_t original_size, int original_dim, unsigned int m);
-void productQuantizationQuery(size_t *result, float *input, size_t input_size, size_t original_size, int dim, unsigned int m, unsigned int topk);
+void productQuantizationBuild(float *original_data, size_t original_size, int original_dim, unsigned int m);
+void productQuantizationQuery(size_t *result, float *input, float **clusters, size_t **indices, size_t input_size, size_t original_size, int orininal_dim, unsigned int m, unsigned int topk);
