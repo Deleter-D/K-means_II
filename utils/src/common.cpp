@@ -5,7 +5,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <unistd.h>
-#include <climits>
+#include <limits.h>
 #include "../include/common.h"
 
 float euclideanDistance(float *x, float *y, const int dim)
