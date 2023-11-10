@@ -1,11 +1,9 @@
 include_directories(./include)
 
 add_library(common_utils SHARED ./src/common.cpp)
-install(TARGETS common_utils DESTINATION lib)
 
 add_library(common_utils_cuda SHARED ./src/common.cu)
 set_target_properties(common_utils_cuda PROPERTIES CUDA_ARCHITECTURES "50;60;70;80")
-install(TARGETS common_utils_cuda DESTINATION lib)
 
 add_executable(test_euclidean ./test/cpu/test_euclidean.cpp)
 target_link_libraries(test_euclidean common_utils)

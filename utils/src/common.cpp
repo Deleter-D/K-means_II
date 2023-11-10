@@ -192,53 +192,63 @@ void split_file(float *original_data, size_t original_size, int original_dim, un
     long int output_file_length = original_size * original_dim * sizeof(float) / m;
     int *output_files = (int *)malloc(m * sizeof(int));
     float **mapped_output_data = (float **)malloc(m * sizeof(float *));
+    bool error_flag = false;
 
 #pragma omp parallel for
     for (int i = 0; i < m; i++)
     {
+        error_flag = false;
         std::string output_filename(prefix + "subset" + std::to_string(i));
         printf("%s", output_filename.c_str());
         output_files[i] = open(output_filename.c_str(), O_CREAT | O_RDWR | O_TRUNC, 0664);
+
         if (output_files[i] == -1)
         {
             std::cerr << ERROR_HEAD << "Can not open output file to split." << std::endl;
-            return;
+            error_flag = true;
         }
         truncate(output_filename.c_str(), output_file_length);
         int temp = write(output_files[i], " ", 1);
-        if (temp == -1)
+        if (error_flag || temp == -1)
         {
             close(output_files[i]);
             std::cerr << ERROR_HEAD << "Can not write output file." << std::endl;
-            return;
+            error_flag = true;
         }
-        mapped_output_data[i] = (float *)mmap(NULL, output_file_length, PROT_READ | PROT_WRITE, MAP_SHARED, output_files[i], 0);
-        if (mapped_output_data[i] == MAP_FAILED)
+        if (!error_flag)
         {
-            close(output_files[i]);
-            std::cerr << ERROR_HEAD << "Can not map output file to memory." << std::endl;
-            return;
+            mapped_output_data[i] = (float *)mmap(NULL, output_file_length, PROT_READ | PROT_WRITE, MAP_SHARED, output_files[i], 0);
+            if (mapped_output_data[i] == MAP_FAILED)
+            {
+                close(output_files[i]);
+                std::cerr << ERROR_HEAD << "Can not map output file to memory." << std::endl;
+                error_flag = true;
+            }
         }
         close(output_files[i]);
     }
-#pragma omp parallel for collapse(2)
-    for (unsigned int i = 0; i < m; i++)
+
+    if (!error_flag)
     {
-        for (size_t j = 0; j < original_size; j++)
+#pragma omp parallel for collapse(2)
+        for (unsigned int i = 0; i < m; i++)
         {
-            memcpy(&mapped_output_data[i][j * subset_dim], &original_data[j * original_dim + i * subset_dim], subset_dim * sizeof(float));
+
+            for (size_t j = 0; j < original_size; j++)
+            {
+                memcpy(&mapped_output_data[i][j * subset_dim], &original_data[j * original_dim + i * subset_dim], subset_dim * sizeof(float));
+            }
         }
-    }
 
 #pragma omp parallel for
-    for (int i = 0; i < m; i++)
-    {
-        if (munmap(mapped_output_data[i], output_file_length) == -1)
+        for (int i = 0; i < m; i++)
         {
-            std::cerr << ERROR_HEAD << "Can not unmap output file from memory." << std::endl;
+            if (munmap(mapped_output_data[i], output_file_length) == -1)
+            {
+                std::cerr << ERROR_HEAD << "Can not unmap output file from memory." << std::endl;
+            }
         }
     }
-
     free(output_files);
     free(mapped_output_data);
 }
