@@ -5,7 +5,6 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <unistd.h>
-#include <limits.h>
 #include "../include/common.h"
 
 float euclideanDistance(float *x, float *y, const int dim)
@@ -22,8 +21,8 @@ float euclideanDistance(float *x, float *y, const int dim)
 
 float costFromV2S(float *x, float *cluster_set, const int dim, const size_t size)
 {
-    float min = MAXFLOAT;
-    float temp = MAXFLOAT;
+    float min = 3.40282347e+38F;
+    float temp = 3.40282347e+38F;
     for (size_t i = 0; i < size; i++)
     {
         temp = euclideanDistance(x, &cluster_set[i * dim], dim);
@@ -45,7 +44,7 @@ float costFromS2S(float *original_set, float *cluster_set, const int dim, const 
 
 size_t belongV2S(float *x, float *cluster_set, const int dim, const size_t size)
 {
-    float min = MAXFLOAT;
+    float min = 3.40282347e+38F;
     float temp;
     size_t index;
     for (size_t i = 0; i < size; i++)
