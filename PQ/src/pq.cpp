@@ -15,7 +15,7 @@
 
 #define __USE_CUDA__
 
-void build(float *original_data, size_t original_size, int dim, unsigned int m)
+void build(float *original_data, size_t original_size, int dim, unsigned int m, std::string prefix)
 {
     float *clusters;
     size_t *indices;
@@ -25,14 +25,14 @@ void build(float *original_data, size_t original_size, int dim, unsigned int m)
 
     // 对每个子集进行聚类
     kmeansII(original_data, original_size, dim, clusters);
-    save(clusters, K * dim, "cluster" + std::to_string(m));
+    save(clusters, K * dim, prefix + "cluster" + std::to_string(m));
 // 计算每个子集中原始子向量所属的子聚类中心索引
 #ifdef __USE_CUDA__
     cudaBelongS2S(indices, original_data, clusters, dim, original_size, K);
 #else
     belongS2S(indices, original_data, clusters, dim, original_size, K);
 #endif
-    save(indices, original_size, "index" + std::to_string(m));
+    save(indices, original_size, prefix + "index" + std::to_string(m));
 
     free(clusters);
     free(indices);
@@ -107,16 +107,16 @@ void query(size_t *result, float *input, float **clusters, size_t **indices, siz
     }
 }
 
-void productQuantizationBuild(float *original_data, size_t original_size, int original_dim, unsigned int m)
+void productQuantizationBuild(float *original_data, size_t original_size, int original_dim, unsigned int m, std::string prefix = "")
 {
-    split_file(original_data, original_size, original_dim, m);
+    split_file(original_data, original_size, original_dim, m, prefix);
 
     size_t subset_dim = original_dim / m;
 
 #pragma omp parallel for
     for (unsigned int i = 0; i < m; i++)
     {
-        int fd = open(("subset" + std::to_string(i)).c_str(), O_RDONLY);
+        int fd = open((prefix + "subset" + std::to_string(i)).c_str(), O_RDONLY);
         struct stat sb;
         bool error_flag = false;
 
@@ -146,7 +146,7 @@ void productQuantizationBuild(float *original_data, size_t original_size, int or
 
         if (!error_flag)
         {
-            build(mapped_data, original_size, subset_dim, i);
+            build(mapped_data, original_size, subset_dim, i, prefix);
             if (munmap(mapped_data, sb.st_size) == -1)
             {
                 std::cerr << ERROR_HEAD << "Can not unmap file from memory." << std::endl;

@@ -19,7 +19,7 @@ int main(int argc, char const *argv[])
         S1[i] = distrib(gen);
     }
 
-    productQuantizationBuild(S1, TEST_SIZE, TEST_TOTAL_DIM, M);
+    productQuantizationBuild(S1, TEST_SIZE, TEST_TOTAL_DIM, M, "./output/");
 
     free(S1);
 

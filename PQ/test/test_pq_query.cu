@@ -21,7 +21,7 @@ int main(int argc, char const *argv[])
         S1[i] = normal(gen);
     }
 
-    productQuantizationBuild(S1, TEST_SIZE, TEST_TOTAL_DIM, M);
+    productQuantizationBuild(S1, TEST_SIZE, TEST_TOTAL_DIM, M, "./output/");
 
     free(S1);
 
@@ -42,8 +42,8 @@ int main(int argc, char const *argv[])
     {
         clusters[i] = (float *)malloc(K * TEST_DIM * sizeof(float));
         indices[i] = (size_t *)malloc(TEST_SIZE * sizeof(size_t));
-        load(clusters[i], K * TEST_DIM, "cluster" + std::to_string(i));
-        load(indices[i], TEST_SIZE, "index" + std::to_string(i));
+        load(clusters[i], K * TEST_DIM, "./output/cluster" + std::to_string(i));
+        load(indices[i], TEST_SIZE, "./output/index" + std::to_string(i));
     }
 
     productQuantizationQuery(result, input, clusters, indices, input_size, TEST_SIZE, TEST_TOTAL_DIM, M, TOPK);

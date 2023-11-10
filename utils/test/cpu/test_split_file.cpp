@@ -21,7 +21,7 @@ int main(int argc, char const *argv[])
         S1[i] = distrib(gen);
     }
 
-    split_file(S1, TEST_SIZE, TEST_TOTAL_DIM, M);
+    split_file(S1, TEST_SIZE, TEST_TOTAL_DIM, M, "./output/");
 
     float **subsets = (float **)malloc(M * sizeof(float *));
     for (unsigned int i = 0; i < M; i++)

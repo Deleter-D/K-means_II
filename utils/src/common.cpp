@@ -185,7 +185,7 @@ void load(size_t *data, size_t size, const std::string &filename)
     inFile.close();
 }
 
-void split_file(float *original_data, size_t original_size, int original_dim, unsigned int m)
+void split_file(float *original_data, size_t original_size, int original_dim, unsigned int m, std::string prefix)
 {
 
     int subset_dim = original_dim / m;
@@ -196,7 +196,8 @@ void split_file(float *original_data, size_t original_size, int original_dim, un
 #pragma omp parallel for
     for (int i = 0; i < m; i++)
     {
-        std::string output_filename("subset" + std::to_string(i));
+        std::string output_filename(prefix + "subset" + std::to_string(i));
+        printf("%s", output_filename.c_str());
         output_files[i] = open(output_filename.c_str(), O_CREAT | O_RDWR | O_TRUNC, 0664);
         if (output_files[i] == -1)
         {

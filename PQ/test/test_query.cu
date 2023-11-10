@@ -19,7 +19,7 @@ int main(int argc, char const *argv[])
         S1[i] = distrib(gen);
     }
 
-    productQuantizationBuild(S1, TEST_SIZE, TEST_TOTAL_DIM, M);
+    productQuantizationBuild(S1, TEST_SIZE, TEST_TOTAL_DIM, M, "./output/");
 
     float *input = (float *)malloc(TEST_TOTAL_DIM * sizeof(float));
     size_t *result = (size_t *)malloc(TOPK * sizeof(size_t));
@@ -36,8 +36,8 @@ int main(int argc, char const *argv[])
     {
         clusters[i] = (float *)malloc(K * TEST_DIM * sizeof(float));
         indices[i] = (size_t *)malloc(TEST_SIZE * sizeof(size_t));
-        load(clusters[i], K * TEST_DIM, "cluster" + std::to_string(i));
-        load(indices[i], TEST_SIZE, "index" + std::to_string(i));
+        load(clusters[i], K * TEST_DIM, "./output/cluster" + std::to_string(i));
+        load(indices[i], TEST_SIZE, "./output/index" + std::to_string(i));
     }
 
     query(result, input, clusters, indices, TEST_SIZE, TEST_TOTAL_DIM, M, TOPK);
