@@ -73,7 +73,7 @@ void cudaEuclideanDistance(float *distance, float *vec, float *set, const int di
 
 float cudaCostFromV2S(float *vec, float *cluster_set, const int dim, const size_t size)
 {
-    float min = MAXFLOAT;
+    float min = 3.40282347e+38F;
 
     float *distance = (float *)malloc(size * sizeof(float));
     cudaEuclideanDistance(distance, vec, cluster_set, dim, size);
@@ -114,7 +114,7 @@ float cudaCostFromS2S(float *original_set, float *cluster_set, const int dim, co
 
 size_t cudaBelongV2S(float *x, float *cluster_set, const int dim, const size_t size)
 {
-    float min = MAXFLOAT;
+    float min = 3.40282347e+38F;
     size_t index;
 
     float *distance = (float *)malloc(size * sizeof(float));
