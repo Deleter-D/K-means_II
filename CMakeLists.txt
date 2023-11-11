@@ -9,6 +9,9 @@ find_package(OpenMP REQUIRED)
 enable_language(CUDA)
 enable_testing()
 
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g")
+set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -g")
+
 add_subdirectory(./utils)
 add_subdirectory(./k-means_II)
 add_subdirectory(./PQ)
