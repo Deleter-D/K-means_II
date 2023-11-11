@@ -38,37 +38,67 @@ __global__ void euclideanDistanceKernel(float *distance, float *vec, float *set,
 
 void cudaEuclideanDistance(float *distance, float *vec, float *set, const int dim, const int size)
 {
-    cudaStream_t stream;
-    cudaStreamCreate(&stream);
+    size_t MAX_SIZE = 2e9 / (dim * sizeof(float));
+    int iter_times = (size / MAX_SIZE) + 1;
+    int size_per_iter;
+    int size_last_iter;
+    if (iter_times == 1)
+    {
+        size_per_iter = size;
+        size_last_iter = size;
+    }
+    else
+    {
+        size_per_iter = MAX_SIZE;
+        size_last_iter = size - MAX_SIZE * (iter_times - 1);
+    }
 
-    size_t distance_bytes = size * sizeof(float);
+    cudaStream_t *stream = (cudaStream_t *)malloc(iter_times * sizeof(cudaStream_t));
     size_t vec_bytes = dim * sizeof(float);
-    size_t set_bytes = dim * size * sizeof(float);
+    for (int i = 0; i < iter_times; i++)
+    {
+        cudaStreamCreate(&stream[i]);
 
-    float *d_distance, *d_vec, *d_set, *temp;
-    cudaMalloc((void **)&d_distance, distance_bytes);
-    cudaMalloc((void **)&d_vec, vec_bytes);
-    cudaMalloc((void **)&d_set, set_bytes);
-    cudaMalloc((void **)&temp, set_bytes);
+        size_t distance_bytes;
+        size_t set_bytes;
 
-    cudaMemcpy(d_vec, vec, vec_bytes, cudaMemcpyHostToDevice);
-    cudaMemcpy(d_set, set, set_bytes, cudaMemcpyHostToDevice);
-    cudaMemset(d_distance, 0, distance_bytes);
-    cudaMemset(temp, 0, set_bytes);
+        if (i == iter_times - 1)
+        {
+            distance_bytes = size_last_iter * sizeof(float);
+            set_bytes = dim * size_last_iter * sizeof(float);
+        }
+        else
+        {
+            distance_bytes = size_per_iter * sizeof(float);
+            set_bytes = dim * size_per_iter * sizeof(float);
+        }
 
-    dim3 block(dim);
-    dim3 grid((size * dim + block.x - 1) / block.x);
-    euclideanDistanceKernel<<<grid, block, dim * sizeof(float), stream>>>(d_distance, d_vec, d_set, temp, dim, size);
+        float *d_distance, *d_vec, *d_set, *temp;
+        cudaMalloc((void **)&d_distance, distance_bytes);
+        cudaMalloc((void **)&d_vec, vec_bytes);
+        cudaMalloc((void **)&d_set, set_bytes);
+        cudaMalloc((void **)&temp, set_bytes);
 
-    cudaMemcpy(distance, d_distance, distance_bytes, cudaMemcpyDeviceToHost);
-    cudaStreamSynchronize(stream);
+        cudaMemcpy(d_vec, vec, vec_bytes, cudaMemcpyHostToDevice);
+        cudaMemcpy(d_set, &set[i * dim * size_per_iter], set_bytes, cudaMemcpyHostToDevice);
+        cudaMemset(d_distance, 0, distance_bytes);
+        cudaMemset(temp, 0, set_bytes);
 
-    cudaFree(d_distance);
-    cudaFree(d_vec);
-    cudaFree(d_set);
-    cudaFree(temp);
+        dim3 block(dim);
+        dim3 grid((size * dim + block.x - 1) / block.x);
+        euclideanDistanceKernel<<<grid, block, dim * sizeof(float), stream[i]>>>(d_distance, d_vec, d_set, temp, dim, size);
 
-    cudaStreamDestroy(stream);
+        cudaMemcpy(&distance[i * size_per_iter], d_distance, distance_bytes, cudaMemcpyDeviceToHost);
+        cudaStreamSynchronize(stream[i]);
+
+        cudaFree(d_distance);
+        cudaFree(d_vec);
+        cudaFree(d_set);
+        cudaFree(temp);
+
+        cudaStreamDestroy(stream[i]);
+    }
+    free(stream);
 }
 
 float cudaCostFromV2S(float *vec, float *cluster_set, const int dim, const size_t size)
