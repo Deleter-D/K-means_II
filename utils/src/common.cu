@@ -166,13 +166,11 @@ void cudaKmeanspp(float *cluster_final, float *cluster_set, size_t *omega, size_
     {
         max_p = -1.0f;
         float cost_set2final = cudaCostFromS2S(cluster_set, cluster_final, dim, cluster_size, current_k);
-        cudaDeviceSynchronize();
 #pragma omp parallel for
         for (size_t i = 0; i < cluster_size; i++)
         {
             // 计算当前向量的概率
             temp_p = omega[i] * cudaCostFromV2S(&cluster_set[i * dim], cluster_final, dim, current_k) / cost_set2final;
-            cudaDeviceSynchronize();
 #pragma omp critical
             {
                 // 记录概率最大的向量信息

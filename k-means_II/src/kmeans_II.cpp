@@ -113,7 +113,6 @@ void init(float *original_data, size_t original_size, size_t original_dim, float
             }
             beg++;
         }
-        probability.clear();
 #ifdef DEBUG
         printf("%sThe %dth initial iteration finished.\n", DEBUG_HEAD, i);
 #endif

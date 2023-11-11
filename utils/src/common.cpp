@@ -26,7 +26,7 @@ float costFromV2S(float *x, float *cluster_set, const int dim, const size_t size
     for (size_t i = 0; i < size; i++)
     {
         temp = euclideanDistance(x, &cluster_set[i * dim], dim);
-        if (temp < min)
+        if (temp < min && temp != 0)
             min = temp;
     }
     return min;
