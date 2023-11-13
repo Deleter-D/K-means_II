@@ -14,7 +14,6 @@
 #include "../../k-means_II/include/kmeans_II.h"
 
 #define __USE_CUDA__
-#define DEBUG
 
 void build(float *original_data, size_t original_size, int dim, unsigned int m, std::string prefix)
 {
@@ -25,12 +24,12 @@ void build(float *original_data, size_t original_size, int dim, unsigned int m, 
     indices = (size_t *)malloc(original_size * sizeof(size_t));
 
 #ifdef DEBUG
-    std::cout << "begining to k-means II.\n";
+    std::cout << DEBUG_HEAD << "begining to k-means II.\n";
 #endif
     // 对每个子集进行聚类
     kmeansII(original_data, original_size, dim, clusters);
 #ifdef DEBUG
-    std::cout << "k-means II finished, saving clusters and indices.\n";
+    std::cout << DEBUG_HEAD << "k-means II finished, saving clusters and indices.\n";
 #endif
     save(clusters, K * dim, prefix + "cluster" + std::to_string(m));
 // 计算每个子集中原始子向量所属的子聚类中心索引
@@ -41,7 +40,7 @@ void build(float *original_data, size_t original_size, int dim, unsigned int m, 
 #endif
     save(indices, original_size, prefix + "index" + std::to_string(m));
 #ifdef DEBUG
-    std::cout << "clusters and indices saved.\n";
+    std::cout << DEBUG_HEAD << "clusters and indices saved.\n";
 #endif
     free(clusters);
     free(indices);
