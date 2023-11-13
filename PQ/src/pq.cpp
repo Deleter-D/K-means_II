@@ -107,16 +107,17 @@ void query(size_t *result, float *input, float **clusters, size_t **indices, siz
     }
 }
 
-void productQuantizationBuild(float *original_data, size_t original_size, int original_dim, unsigned int m, std::string prefix = "")
+void productQuantizationBuild(float *original_data, size_t original_size, int original_dim, unsigned int m, char *prefix)
 {
-    split_file(original_data, original_size, original_dim, m, prefix);
+    std::string prefix_str = prefix;
+    split_file(original_data, original_size, original_dim, m, prefix_str);
 
     size_t subset_dim = original_dim / m;
 
 #pragma omp parallel for
     for (unsigned int i = 0; i < m; i++)
     {
-        int fd = open((prefix + "subset" + std::to_string(i)).c_str(), O_RDONLY);
+        int fd = open((prefix_str + "subset" + std::to_string(i)).c_str(), O_RDONLY);
         struct stat sb;
         bool error_flag = false;
 
@@ -146,7 +147,7 @@ void productQuantizationBuild(float *original_data, size_t original_size, int or
 
         if (!error_flag)
         {
-            build(mapped_data, original_size, subset_dim, i, prefix);
+            build(mapped_data, original_size, subset_dim, i, prefix_str);
             if (munmap(mapped_data, sb.st_size) == -1)
             {
                 std::cerr << ERROR_HEAD << "Can not unmap file from memory." << std::endl;

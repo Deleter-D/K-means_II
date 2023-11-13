@@ -14,6 +14,6 @@ void query(size_t *result, float *input, float **clusters, size_t **indices, siz
 
 extern "C"
 {
-    void productQuantizationBuild(float *original_data, size_t original_size, int original_dim, unsigned int m, std::string prefix);
+    void productQuantizationBuild(float *original_data, size_t original_size, int original_dim, unsigned int m, char *prefix);
     void productQuantizationQuery(size_t *result, float *input, float **clusters, size_t **indices, size_t input_size, size_t original_size, int orininal_dim, unsigned int m, unsigned int topk);
 }
