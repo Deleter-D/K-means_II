@@ -7,6 +7,8 @@
 #include <unistd.h>
 #include "../include/common.h"
 
+#define DEBUG
+
 float euclideanDistance(float *x, float *y, const int dim)
 {
     float sum = 0.0f;
@@ -199,7 +201,9 @@ void split_file(float *original_data, size_t original_size, int original_dim, un
     {
         error_flag = false;
         std::string output_filename(prefix + "subset" + std::to_string(i));
-        printf("%s", output_filename.c_str());
+#ifdef DEBUG
+        std::cout << "subsets will be saved to " << output_filename << "\n";
+#endif
         output_files[i] = open(output_filename.c_str(), O_CREAT | O_RDWR | O_TRUNC, 0664);
 
         if (output_files[i] == -1)
@@ -227,7 +231,9 @@ void split_file(float *original_data, size_t original_size, int original_dim, un
         }
         close(output_files[i]);
     }
-
+#ifdef DEBUG
+    std::cout << "file created, doing memcpy.\n";
+#endif
     if (!error_flag)
     {
 #pragma omp parallel for collapse(2)
@@ -239,6 +245,9 @@ void split_file(float *original_data, size_t original_size, int original_dim, un
                 memcpy(&mapped_output_data[i][j * subset_dim], &original_data[j * original_dim + i * subset_dim], subset_dim * sizeof(float));
             }
         }
+#ifdef DEBUG
+        std::cout << "memcpy finished.\n";
+#endif
 
 #pragma omp parallel for
         for (int i = 0; i < m; i++)

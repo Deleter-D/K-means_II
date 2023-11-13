@@ -14,6 +14,7 @@
 #include "../../k-means_II/include/kmeans_II.h"
 
 #define __USE_CUDA__
+#define DEBUG
 
 void build(float *original_data, size_t original_size, int dim, unsigned int m, std::string prefix)
 {
@@ -23,8 +24,14 @@ void build(float *original_data, size_t original_size, int dim, unsigned int m, 
     clusters = (float *)malloc(K * dim * sizeof(float));
     indices = (size_t *)malloc(original_size * sizeof(size_t));
 
+#ifdef DEBUG
+    std::cout << "begining to k-means II.\n";
+#endif
     // 对每个子集进行聚类
     kmeansII(original_data, original_size, dim, clusters);
+#ifdef DEBUG
+    std::cout << "k-means II finished, saving clusters and indices.\n";
+#endif
     save(clusters, K * dim, prefix + "cluster" + std::to_string(m));
 // 计算每个子集中原始子向量所属的子聚类中心索引
 #ifdef __USE_CUDA__
@@ -33,7 +40,9 @@ void build(float *original_data, size_t original_size, int dim, unsigned int m, 
     belongS2S(indices, original_data, clusters, dim, original_size, K);
 #endif
     save(indices, original_size, prefix + "index" + std::to_string(m));
-
+#ifdef DEBUG
+    std::cout << "clusters and indices saved.\n";
+#endif
     free(clusters);
     free(indices);
 }
@@ -110,8 +119,13 @@ void query(size_t *result, float *input, float **clusters, size_t **indices, siz
 void productQuantizationBuild(float *original_data, size_t original_size, int original_dim, unsigned int m, char *prefix)
 {
     std::string prefix_str = prefix;
+#ifdef DEBUG
+    std::cout << DEBUG_HEAD << "begining to split data.\n";
+#endif
     split_file(original_data, original_size, original_dim, m, prefix_str);
-
+#ifdef DEBUG
+    std::cout << DEBUG_HEAD << "split data finished.\n";
+#endif
     size_t subset_dim = original_dim / m;
 
 #pragma omp parallel for
