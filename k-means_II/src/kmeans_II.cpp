@@ -6,7 +6,6 @@
 #include <set>
 #include <iostream>
 #include <cmath>
-
 #include <vector>
 #include <algorithm>
 #include <omp.h>
@@ -16,17 +15,20 @@
 #include "../../utils/include/common.h"
 #include "../../utils/include/common.cuh"
 
-#define DEBUG
-
 #define __USE_CUDA__
 
 void init(float *original_data, size_t original_size, size_t original_dim, float *cluster_set)
 {
 #ifdef DEBUG
 #ifdef _OPENMP
-    printf("%sopenmp is enabled.\n", DEBUG_HEAD);
+    std::cout << DEBUG_HEAD << "openmp is enabled.\n";
 #else
-    printf("%sopenmp is not enabled\n", DEBUG_HEAD);
+    std::cout << DEBUG_HEAD << "openmp is not enabled.\n";
+#endif
+#ifdef __USE_CUDA__
+    std::cout << DEBUG_HEAD << "cuda is enabled.\n";
+#else
+    std::cout << DEBUG_HEAD << "cuda is not enabled.\n";
 #endif
 #endif
     time_t start_time = 0;
@@ -52,6 +54,9 @@ void init(float *original_data, size_t original_size, size_t original_dim, float
     size_t current_k = 1;
     center_index.insert(index); // 记录第一个聚类中心全局索引
 
+#ifdef DEBUG
+    std::cout << DEBUG_HEAD << "begin to compute phi.\n";
+#endif
     // 计算此时聚类中心集与全集的代价
     float phi;
 #ifdef __USE_CUDA__
@@ -61,7 +66,7 @@ void init(float *original_data, size_t original_size, size_t original_dim, float
 #endif
 
 #ifdef DEBUG
-    printf("%sCompute phi finished.\n", DEBUG_HEAD);
+    std::cout << DEBUG_HEAD << "Compute phi finished.\n";
 #endif
 
     // 存放概率值和索引的key-value对
@@ -69,7 +74,9 @@ void init(float *original_data, size_t original_size, size_t original_dim, float
     // 迭代
     for (int i = 0; i < INIT_ITERATION_TIMES; i++)
     {
-
+#ifdef DEBUG
+        std::cout << DEBUG_HEAD << "The " << i << "th initial iteration begining.\n";
+#endif
         float cost_set2cluster;
 #ifdef __USE_CUDA__
         cost_set2cluster = cudaCostFromS2S(original_data, cluster_set_temp, original_dim, original_size, current_k);
@@ -114,7 +121,7 @@ void init(float *original_data, size_t original_size, size_t original_dim, float
             beg++;
         }
 #ifdef DEBUG
-        printf("%sThe %dth initial iteration finished.\n", DEBUG_HEAD, i);
+        std::cout << DEBUG_HEAD << "The " << i << "th initial iteration finished.\n";
 #endif
     }
 
