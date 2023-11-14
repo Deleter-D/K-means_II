@@ -21,12 +21,13 @@ int main(int argc, char const *argv[])
     }
 
     float cost = costFromS2S(S1, S2, TEST_DIM, TEST_SIZE, TEST_SIZE);
+    std::cout << "host finished" << std::endl;
     float cost_cuda = cudaCostFromS2S(S1, S2, TEST_DIM, TEST_SIZE, TEST_SIZE);
 
     free(S1);
     free(S2);
 
-    if (abs(cost - cost_cuda) > 1e-2)
+    if (abs(cost - cost_cuda) > 1e-5)
         return -1;
 
     return 0;

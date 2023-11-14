@@ -102,7 +102,7 @@ void cudaEuclideanDistance(float *distance, float *vec, float *set, const int di
             current_size = size_per_iter;
         }
         dim3 grid((current_size * dim + block.x - 1) / block.x);
-        euclideanDistanceKernel<<<grid, block, dim * sizeof(float), stream[i]>>>(d_distances[i], d_vecs[i], d_sets[i], temps[i], dim, size);
+        euclideanDistanceKernel<<<grid, block, dim * sizeof(float), stream[i]>>>(d_distances[i], d_vecs[i], d_sets[i], temps[i], dim, current_size);
 
         cudaMemcpy(&distance[i * size_per_iter], d_distances[i], distance_bytes, cudaMemcpyDeviceToHost);
     }
