@@ -51,5 +51,6 @@
         "fstream": "cpp",
         "optional": "cpp",
         "sstream": "cpp"
-    }
+    },
+    "workbench.colorTheme": "Default Dark Modern"
 }

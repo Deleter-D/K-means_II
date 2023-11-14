@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <random>
 #include <omp.h>
+#include <iostream>
 
 __global__ void euclideanDistanceKernel(float *distance, float *vec, float *set, float *temp, const int dim, const int size)
 {
@@ -55,6 +56,12 @@ void cudaEuclideanDistance(float *distance, float *vec, float *set, const int di
 
     cudaStream_t *stream = (cudaStream_t *)malloc(iter_times * sizeof(cudaStream_t));
     size_t vec_bytes = dim * sizeof(float);
+    float **d_distances, **d_vecs, **d_sets, **temps;
+    d_distances = (float **)malloc(iter_times * sizeof(float *));
+    d_vecs = (float **)malloc(iter_times * sizeof(float *));
+    d_sets = (float **)malloc(iter_times * sizeof(float *));
+    temps = (float **)malloc(iter_times * sizeof(float *));
+
     for (int i = 0; i < iter_times; i++)
     {
         cudaStreamCreate(&stream[i]);
@@ -73,28 +80,41 @@ void cudaEuclideanDistance(float *distance, float *vec, float *set, const int di
             set_bytes = dim * size_per_iter * sizeof(float);
         }
 
-        float *d_distance, *d_vec, *d_set, *temp;
-        cudaMalloc((void **)&d_distance, distance_bytes);
-        cudaMalloc((void **)&d_vec, vec_bytes);
-        cudaMalloc((void **)&d_set, set_bytes);
-        cudaMalloc((void **)&temp, set_bytes);
+        // float *d_distance, *d_vec, *d_set, *temp;
+        cudaMalloc((void **)&d_distances[i], distance_bytes);
+        cudaMalloc((void **)&d_vecs[i], vec_bytes);
+        cudaMalloc((void **)&d_sets[i], set_bytes);
+        cudaMalloc((void **)&temps[i], set_bytes);
 
-        cudaMemcpy(d_vec, vec, vec_bytes, cudaMemcpyHostToDevice);
-        cudaMemcpy(d_set, &set[i * dim * size_per_iter], set_bytes, cudaMemcpyHostToDevice);
-        cudaMemset(d_distance, 0, distance_bytes);
-        cudaMemset(temp, 0, set_bytes);
+        cudaMemcpy(d_vecs[i], vec, vec_bytes, cudaMemcpyHostToDevice);
+        cudaMemcpy(d_sets[i], &set[i * dim * size_per_iter], set_bytes, cudaMemcpyHostToDevice);
+        cudaMemset(d_distances[i], 0, distance_bytes);
+        cudaMemset(temps[i], 0, set_bytes);
 
         dim3 block(dim);
-        dim3 grid((size * dim + block.x - 1) / block.x);
-        euclideanDistanceKernel<<<grid, block, dim * sizeof(float), stream[i]>>>(d_distance, d_vec, d_set, temp, dim, size);
+        size_t current_size;
+        if (i == iter_times - 1)
+        {
+            current_size = size_last_iter;
+        }
+        else
+        {
+            current_size = size_per_iter;
+        }
+        dim3 grid((current_size * dim + block.x - 1) / block.x);
+        euclideanDistanceKernel<<<grid, block, dim * sizeof(float), stream[i]>>>(d_distances[i], d_vecs[i], d_sets[i], temps[i], dim, size);
 
-        cudaMemcpy(&distance[i * size_per_iter], d_distance, distance_bytes, cudaMemcpyDeviceToHost);
+        cudaMemcpy(&distance[i * size_per_iter], d_distances[i], distance_bytes, cudaMemcpyDeviceToHost);
+    }
+
+    for (int i = 0; i < iter_times; i++)
+    {
         cudaStreamSynchronize(stream[i]);
 
-        cudaFree(d_distance);
-        cudaFree(d_vec);
-        cudaFree(d_set);
-        cudaFree(temp);
+        cudaFree(d_distances[i]);
+        cudaFree(d_vecs[i]);
+        cudaFree(d_sets[i]);
+        cudaFree(temps[i]);
 
         cudaStreamDestroy(stream[i]);
     }
@@ -108,7 +128,7 @@ float cudaCostFromV2S(float *vec, float *cluster_set, const int dim, const size_
     float *distance = (float *)malloc(size * sizeof(float));
     cudaEuclideanDistance(distance, vec, cluster_set, dim, size);
 
-    // TODO: 取最小值可优化
+#pragma omp parallel for private(i) reduction(min : min)
     for (size_t i = 0; i < size; i++)
     {
         if (distance[i] < min)
@@ -150,7 +170,7 @@ size_t cudaBelongV2S(float *x, float *cluster_set, const int dim, const size_t s
     float *distance = (float *)malloc(size * sizeof(float));
     cudaEuclideanDistance(distance, x, cluster_set, dim, size);
 
-    // TODO: 取最小值可优化
+#pragma omp parallel for private(i) reduction(min : min)
     for (size_t i = 0; i < size; i++)
     {
         if (distance[i] < min)
@@ -170,6 +190,10 @@ void cudaBelongS2S(size_t *index, float *original_set, float *cluster_set, const
 #pragma omp parallel for
     for (size_t i = 0; i < original_size; i++)
     {
+#ifdef DEBUG
+        if (i == 0)
+            std::cout << DEBUG_HEAD << "threads count in belongS2S: " << omp_get_num_threads() << "\n";
+#endif
         index[i] = cudaBelongV2S(&original_set[i * dim], cluster_set, dim, cluster_size);
     }
     cudaDeviceSynchronize();

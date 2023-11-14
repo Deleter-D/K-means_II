@@ -4,10 +4,7 @@
 #include <iostream>
 #include <string>
 #include <fstream>
-
-#define DEBUG_HEAD "\033[34m[Debug]: \033[0m"
-#define ERROR_HEAD "\033[31m[Error]: \033[0m"
-#define DEBUG
+#include "../include/config.h"
 
 float euclideanDistance(float *x, float *y, const int dim);                                                                                   // 欧式距离
 float costFromV2S(float *x, float *cluster_set, const int dim, const size_t size);                                                            // 向量与集合之间的代价
