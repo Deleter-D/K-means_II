@@ -35,10 +35,10 @@ int main(int argc, char const *argv[])
         if (abs(distance_cuda[i] - temp) > 1e-5)
         {
             printf("%d: %f,%f\n", i, temp, distance_cuda[i]);
-            // free(vec);
-            // free(set);
-            // free(distance_cuda);
-            // return -1;
+            free(vec);
+            free(set);
+            free(distance_cuda);
+            return -1;
         }
     }
 

@@ -12,7 +12,7 @@
 #define MAX_KMEANS_ITERATION_TIMES 2000
 
 // 仅用于测试
-#define TEST_SIZE 1000
+#define TEST_SIZE 10000
 #define TEST_TOTAL_DIM 96
 #define TEST_DIM 32
 #define TOPK 10

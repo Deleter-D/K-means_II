@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <random>
 #include <omp.h>
+#include <math.h>
 #include <iostream>
 
 __global__ void euclideanDistanceKernel(float *distance, float *vec, float *set, float *temp, const int dim, const int size)
@@ -39,7 +40,7 @@ __global__ void euclideanDistanceKernel(float *distance, float *vec, float *set,
 
 void cudaEuclideanDistance(float *distance, float *vec, float *set, const int dim, const int size)
 {
-    size_t MAX_SIZE = 2e9 / (dim * sizeof(float));
+    size_t MAX_SIZE = 8e9 / (dim * sizeof(float));
     int iter_times = (size / MAX_SIZE) + 1;
     int size_per_iter;
     int size_last_iter;
@@ -68,16 +69,19 @@ void cudaEuclideanDistance(float *distance, float *vec, float *set, const int di
 
         size_t distance_bytes;
         size_t set_bytes;
+        size_t current_size;
 
         if (i == iter_times - 1)
         {
             distance_bytes = size_last_iter * sizeof(float);
             set_bytes = dim * size_last_iter * sizeof(float);
+            current_size = size_last_iter;
         }
         else
         {
             distance_bytes = size_per_iter * sizeof(float);
             set_bytes = dim * size_per_iter * sizeof(float);
+            current_size = size_per_iter;
         }
 
         // float *d_distance, *d_vec, *d_set, *temp;
@@ -92,15 +96,6 @@ void cudaEuclideanDistance(float *distance, float *vec, float *set, const int di
         cudaMemset(temps[i], 0, set_bytes);
 
         dim3 block(dim);
-        size_t current_size;
-        if (i == iter_times - 1)
-        {
-            current_size = size_last_iter;
-        }
-        else
-        {
-            current_size = size_per_iter;
-        }
         dim3 grid((current_size * dim + block.x - 1) / block.x);
         euclideanDistanceKernel<<<grid, block, dim * sizeof(float), stream[i]>>>(d_distances[i], d_vecs[i], d_sets[i], temps[i], dim, current_size);
 
@@ -119,6 +114,10 @@ void cudaEuclideanDistance(float *distance, float *vec, float *set, const int di
         cudaStreamDestroy(stream[i]);
     }
     free(stream);
+    free(d_distances);
+    free(d_vecs);
+    free(d_sets);
+    free(temps);
 }
 
 float cudaCostFromV2S(float *vec, float *cluster_set, const int dim, const size_t size)
@@ -140,24 +139,126 @@ float cudaCostFromV2S(float *vec, float *cluster_set, const int dim, const size_
     return min;
 }
 
+__global__ void costFromS2SKernel(float *distances, float *original_set, float *cluster_set, int dim, size_t original_size, size_t cluster_size)
+{
+    int tid = threadIdx.x;
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+
+    extern __shared__ float distance_temp[];
+
+    if (idx < original_size)
+    {
+        distances[idx] = INFINITY;
+
+        for (int j = 0; j < cluster_size; j++)
+        {
+            float dist = 0.0f;
+            for (int k = 0; k < dim; k++)
+            {
+                float diff = original_set[idx * dim + k] - cluster_set[j * dim + k];
+                dist += diff * diff;
+            }
+            distance_temp[tid] = dist;
+
+            if (distance_temp[tid] < distances[idx])
+            {
+                distances[idx] = distance_temp[tid];
+            }
+        }
+    }
+}
+
 float cudaCostFromS2S(float *original_set, float *cluster_set, const int dim, const size_t original_size, const size_t cluster_size)
 {
-    float *sums = (float *)malloc(original_size * sizeof(float));
-#pragma omp parallel for
-    for (size_t i = 0; i < original_size; i++)
+    float *distances = (float *)malloc(original_size * sizeof(float));
+
+    size_t MAX_SIZE = 8e9 / (dim * sizeof(float));
+    int iter_times = (original_size / MAX_SIZE) + 1;
+    int size_per_iter;
+    int size_last_iter;
+    if (iter_times == 1)
     {
-        sums[i] = cudaCostFromV2S(&original_set[i * dim], cluster_set, dim, cluster_size);
+        size_per_iter = original_size;
+        size_last_iter = original_size;
     }
-    cudaDeviceSynchronize();
+    else
+    {
+        size_per_iter = MAX_SIZE;
+        size_last_iter = original_size - MAX_SIZE * (iter_times - 1);
+    }
+
+    cudaStream_t *stream = (cudaStream_t *)malloc(iter_times * sizeof(cudaStream_t));
+    float **d_original_sets, **d_distances;
+    d_original_sets = (float **)malloc(iter_times * sizeof(float *));
+    d_distances = (float **)malloc(iter_times * sizeof(float *));
+
+    float *d_cluster_set;
+    cudaMalloc((void **)&d_cluster_set, cluster_size * dim * sizeof(float));
+    cudaMemcpy(d_cluster_set, cluster_set, cluster_size * dim * sizeof(float), cudaMemcpyHostToDevice);
+
+    for (int i = 0; i < iter_times; i++)
+    {
+        cudaStreamCreate(&stream[i]);
+
+        size_t distance_bytes;
+        size_t set_bytes;
+        size_t current_size;
+
+        if (i == iter_times - 1)
+        {
+            distance_bytes = size_last_iter * sizeof(float);
+            set_bytes = dim * size_last_iter * sizeof(float);
+            current_size = size_last_iter;
+        }
+        else
+        {
+            distance_bytes = size_per_iter * sizeof(float);
+            set_bytes = dim * size_per_iter * sizeof(float);
+            current_size = size_per_iter;
+        }
+
+        cudaMalloc((void **)&d_original_sets[i], set_bytes);
+        cudaMalloc((void **)&d_distances[i], distance_bytes);
+
+        cudaMemcpy(d_original_sets[i], &original_set[i * dim * size_per_iter], set_bytes, cudaMemcpyHostToDevice);
+        cudaMemset(d_distances[i], 0, distance_bytes);
+
+        dim3 block(1024);
+        dim3 grid((current_size + block.x - 1) / block.x);
+
+        costFromS2SKernel<<<grid, block, block.x * sizeof(float), stream[i]>>>(d_distances[i], d_original_sets[i], d_cluster_set, dim, current_size, cluster_size);
+
+        cudaMemcpy(&distances[i * size_per_iter], d_distances[i], distance_bytes, cudaMemcpyDeviceToHost);
+
+        auto err = cudaGetLastError();
+        if (err != cudaSuccess)
+        {
+            std::cout << cudaGetErrorString(err) << "\n";
+        }
+    }
+
+    for (int i = 0; i < iter_times; i++)
+    {
+        cudaStreamSynchronize(stream[i]);
+
+        cudaFree(d_original_sets[i]);
+        cudaFree(d_distances[i]);
+
+        cudaStreamDestroy(stream[i]);
+    }
+    cudaFree(d_cluster_set);
+    free(stream);
+    free(d_original_sets);
+    free(d_distances);
 
     float sum = 0.0f;
 #pragma omp parallel for reduction(+ : sum)
     for (size_t i = 0; i < original_size; i++)
     {
-        sum += sums[i];
+        sum += distances[i];
     }
 
-    free(sums);
+    free(distances);
 
     return sum;
 }
@@ -185,18 +286,160 @@ size_t cudaBelongV2S(float *x, float *cluster_set, const int dim, const size_t s
     return index;
 }
 
+__global__ void belongS2SKernel(size_t *indices, float *distances, float *original_set, float *cluster_set, int dim, size_t original_size, size_t cluster_size)
+{
+    int tid = threadIdx.x;
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+
+    extern __shared__ float distance_temp[];
+
+    if (idx < original_size)
+    {
+        distances[idx] = INFINITY;
+
+        for (int i = 0; i < cluster_size; i++)
+        {
+            float dist = 0.0f;
+            for (int j = 0; j < dim; j++)
+            {
+                float diff = original_set[idx * dim + j] - cluster_set[i * dim + j];
+                dist += diff * diff;
+            }
+            distance_temp[tid] = dist;
+
+            if (distance_temp[tid] < distances[idx])
+            {
+                distances[idx] = distance_temp[tid];
+
+                indices[idx] = i;
+            }
+        }
+    }
+}
+
 void cudaBelongS2S(size_t *index, float *original_set, float *cluster_set, const int dim, const size_t original_size, const size_t cluster_size)
 {
-#pragma omp parallel for
-    for (size_t i = 0; i < original_size; i++)
+    size_t MAX_SIZE = 8e9 / (dim * sizeof(float));
+    int iter_times = (original_size / MAX_SIZE) + 1;
+    int size_per_iter;
+    int size_last_iter;
+    if (iter_times == 1)
     {
-#ifdef DEBUG
-        if (i == 0)
-            std::cout << DEBUG_HEAD << "threads count in belongS2S: " << omp_get_num_threads() << "\n";
-#endif
-        index[i] = cudaBelongV2S(&original_set[i * dim], cluster_set, dim, cluster_size);
+        size_per_iter = original_size;
+        size_last_iter = original_size;
     }
-    cudaDeviceSynchronize();
+    else
+    {
+        size_per_iter = MAX_SIZE;
+        size_last_iter = original_size - MAX_SIZE * (iter_times - 1);
+    }
+
+    cudaStream_t *stream = (cudaStream_t *)malloc(iter_times * sizeof(cudaStream_t));
+    float **d_original_sets, **d_distances;
+    size_t **d_indices;
+    d_original_sets = (float **)malloc(iter_times * sizeof(float *));
+    d_distances = (float **)malloc(iter_times * sizeof(float *));
+    d_indices = (size_t **)malloc(iter_times * sizeof(size_t *));
+
+    float *d_cluster_set;
+    cudaMalloc((void **)&d_cluster_set, cluster_size * dim * sizeof(float));
+    cudaMemcpy(d_cluster_set, cluster_set, cluster_size * dim * sizeof(float), cudaMemcpyHostToDevice);
+
+    for (int i = 0; i < iter_times; i++)
+    {
+        cudaStreamCreate(&stream[i]);
+
+        size_t distance_bytes;
+        size_t index_bytes;
+        size_t set_bytes;
+
+        if (i == iter_times - 1)
+        {
+            distance_bytes = size_last_iter * sizeof(float);
+            index_bytes = size_last_iter * sizeof(size_t);
+            set_bytes = dim * size_last_iter * sizeof(float);
+        }
+        else
+        {
+            distance_bytes = size_per_iter * sizeof(float);
+            index_bytes = size_per_iter * sizeof(size_t);
+            set_bytes = dim * size_per_iter * sizeof(float);
+        }
+
+        cudaMalloc((void **)&d_original_sets[i], set_bytes);
+        cudaMalloc((void **)&d_distances[i], distance_bytes);
+        cudaMalloc((void **)&d_indices[i], index_bytes);
+
+        cudaMemcpy(d_original_sets[i], &original_set[i * dim * size_per_iter], set_bytes, cudaMemcpyHostToDevice);
+
+        dim3 block(1024);
+        size_t current_size;
+        if (i == iter_times - 1)
+        {
+            current_size = size_last_iter;
+        }
+        else
+        {
+            current_size = size_per_iter;
+        }
+        dim3 grid((current_size + block.x - 1) / block.x);
+
+        belongS2SKernel<<<grid, block, block.x * sizeof(float), stream[i]>>>(d_indices[i], d_distances[i], d_original_sets[i], d_cluster_set, dim, current_size, cluster_size);
+
+        cudaMemcpy(&index[i * size_per_iter], d_indices[i], index_bytes, cudaMemcpyDeviceToHost);
+
+        auto err = cudaGetLastError();
+        if (err != cudaSuccess)
+        {
+            std::cout << cudaGetErrorString(err) << "\n";
+        }
+    }
+
+    for (int i = 0; i < iter_times; i++)
+    {
+        cudaStreamSynchronize(stream[i]);
+
+        cudaFree(d_original_sets[i]);
+        cudaFree(d_distances[i]);
+        cudaFree(d_indices[i]);
+
+        cudaStreamDestroy(stream[i]);
+    }
+    cudaFree(d_cluster_set);
+    free(stream);
+    free(d_original_sets);
+    free(d_distances);
+    free(d_indices);
+}
+
+__global__ void kmeansppKernel(size_t *indices, float *probability, float *cluster_set, float *cluster_final, size_t *omega, int dim, int current_k, int cluster_size)
+{
+    int tid = threadIdx.x;
+    int idx = blockIdx.x * blockDim.x + tid;
+
+    extern __shared__ float p_temp[];
+
+    if (idx < cluster_size)
+    {
+        probability[idx] = INFINITY;
+
+        for (int i = 0; i < current_k; i++)
+        {
+            p_temp[tid] = 0.0f;
+            for (int j = 0; j < dim; j++)
+            {
+                float diff = cluster_set[idx * dim + j] - cluster_final[i * dim + j];
+                p_temp[tid] += diff * diff;
+            }
+            p_temp[tid] *= omega[idx];
+
+            if (p_temp[tid] < probability[idx])
+            {
+                probability[idx] = p_temp[tid];
+                indices[idx] = i;
+            }
+        }
+    }
 }
 
 void cudaKmeanspp(float *cluster_final, float *cluster_set, size_t *omega, size_t k, const int dim, const size_t cluster_size)
@@ -212,33 +455,72 @@ void cudaKmeanspp(float *cluster_final, float *cluster_set, size_t *omega, size_
     size_t current_k = 1;
 
     float max_p;
-    float temp_p;
     size_t max_p_index;
+
+    size_t indices_bytes = cluster_size * sizeof(size_t);
+    size_t cluster_set_bytes = cluster_size * dim * sizeof(float);
+    size_t p_bytes = cluster_size * sizeof(float);
+
+    size_t *indices = (size_t *)malloc(indices_bytes);
+    float *probability = (float *)malloc(p_bytes);
+
+    size_t *d_omega, *d_indices;
+    float *d_cluster_set, *d_probability;
+    cudaMalloc((void **)&d_cluster_set, cluster_set_bytes);
+    cudaMalloc((void **)&d_omega, indices_bytes);
+    cudaMalloc((void **)&d_indices, indices_bytes);
+    cudaMalloc((void **)&d_probability, p_bytes);
+
+    cudaMemcpy(d_cluster_set, cluster_set, cluster_set_bytes, cudaMemcpyHostToDevice);
+    cudaMemcpy(d_omega, omega, indices_bytes, cudaMemcpyHostToDevice);
 
     // 迭代k-1次，每次取一个聚类中心进入c_final
     while (current_k < k)
     {
         max_p = -1.0f;
-        float cost_set2final = cudaCostFromS2S(cluster_set, cluster_final, dim, cluster_size, current_k);
-#pragma omp parallel for
-        for (size_t i = 0; i < cluster_size; i++)
+
+        cudaStream_t stream;
+        cudaStreamCreate(&stream);
+
+        size_t cluster_final_bytes = current_k * dim * sizeof(float);
+
+        float *d_cluster_final;
+        cudaMalloc((void **)&d_cluster_final, cluster_final_bytes);
+
+        cudaMemcpy(d_cluster_final, cluster_final, cluster_final_bytes, cudaMemcpyHostToDevice);
+
+        dim3 block(1024);
+        dim3 grid((cluster_size + block.x - 1) / block.x);
+        kmeansppKernel<<<grid, block, block.x * sizeof(float), stream>>>(d_indices, d_probability, d_cluster_set, d_cluster_final, d_omega, dim, current_k, cluster_size);
+
+        cudaMemcpy(probability, d_probability, p_bytes, cudaMemcpyDeviceToHost);
+        cudaMemcpy(indices, d_indices, indices_bytes, cudaMemcpyDeviceToHost);
+
+        cudaStreamSynchronize(stream);
+        cudaFree(d_cluster_final);
+
+#pragma omp parallel for private(i) reduction(max : max_p)
+        for (int i = 0; i < cluster_size; i++)
         {
-            // 计算当前向量的概率
-            temp_p = omega[i] * cudaCostFromV2S(&cluster_set[i * dim], cluster_final, dim, current_k) / cost_set2final;
-#pragma omp critical
+            if (probability[i] > max_p)
             {
-                // 记录概率最大的向量信息
-                if (temp_p > max_p)
-                {
-                    max_p = temp_p;
-                    max_p_index = i;
-                }
+                max_p = probability[i];
+                max_p_index = indices[i];
             }
         }
+
         // 将概率最大的向量并入最终聚类中心集
         memcpy(&cluster_final[current_k * dim], &cluster_set[max_p_index * dim], dim * sizeof(float));
         current_k++;
     }
+
+    cudaFree(d_cluster_set);
+    cudaFree(d_omega);
+    cudaFree(d_indices);
+    cudaFree(d_probability);
+
+    free(probability);
+    free(indices);
 }
 
 __global__ void getNewClusterKernel(float *cluster_new, float *original_set, size_t *belong, const int dim, const size_t original_size, unsigned int *count)
