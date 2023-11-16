@@ -238,7 +238,7 @@ void split_file(float *original_data, unsigned int original_size, int original_d
         for (unsigned int i = 0; i < m; i++)
         {
 
-            for (unsigned int j = 0; j < original_size; j++)
+            for (size_t j = 0; j < original_size; j++)
             {
                 memcpy(&mapped_output_data[i][j * subset_dim], &original_data[j * original_dim + i * subset_dim], subset_dim * sizeof(float));
             }

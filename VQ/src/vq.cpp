@@ -1,3 +1,4 @@
+#include <omp.h>
 #include "../include/vq.h"
 
 void build(float *original_data, unsigned int original_size, int original_dim, char *prefix)
@@ -12,8 +13,21 @@ void build(float *original_data, unsigned int original_size, int original_dim, c
     unsigned int *indices_0 = (unsigned int *)malloc(indices_0_bytes);
     cudaBelongS2S(indices_0, original_data, cluster_0, original_dim, original_size, K0);
 
+    unsigned int *catagories_count = (unsigned int *)malloc(K0 * sizeof(unsigned int));
+
+#pragma omp parallel for
+    for (int i = 0; i < original_size; i++)
+    {
+        unsigned int temp = indices_0[i];
+#pragma omp atomic
+        catagories_count[temp]++;
+    }
+
     save(cluster_0, cluster_0_bytes, prefix_str + "cluster_0");
     save(indices_0, indices_0_bytes, prefix_str + "indices_0");
+    save(catagories_count, K0 * sizeof(unsigned int), prefix_str + "catagories");
+
+    free(catagories_count);
 
     size_t cluster_1_bytes = K1 * original_dim * sizeof(float);
     size_t indices_1_bytes = K0 * sizeof(unsigned int);
@@ -66,7 +80,8 @@ __global__ void levelQueryKernel(unsigned int *result, float *query_set, float *
     }
 }
 
-void query(float *query_set, unsigned int query_size, float *original_data, unsigned int original_dim, unsigned int original_size, unsigned int topk, float *cluster_0, float *cluster_1, unsigned int *indices_0, unsigned int *indices_1)
+void query(float *query_set, unsigned int query_size, float *original_data, unsigned int original_dim, unsigned int original_size, unsigned int topk,
+           float *cluster_0, float *cluster_1, unsigned int *indices_0, unsigned int *indices_1, unsigned int *catagories_count)
 {
     cudaStream_t stream;
     cudaStreamCreate(&stream);
@@ -107,9 +122,26 @@ void query(float *query_set, unsigned int query_size, float *original_data, unsi
     // cudaFree(d_belong_1);
 
     // 第二层查询
-
+    unsigned int *belong_0;
+    belong_0 = (unsigned int *)malloc(belong_bytes * sizeof(unsigned int));
     unsigned int *d_belong_0;
     cudaMalloc((void **)&d_belong_0, belong_bytes);
 
-    levelQueryKernel<<<grid, block>>>(d_belong_0)
+    levelQueryKernel<<<grid, block>>>(d_belong_0, d_query_set, d_cluster_0, d_indices_1, d_belong_1, original_dim, query_size, K0, K0);
+
+    cudaStreamSynchronize(stream);
+    cudaMemcpy(belong_0, d_belong_0, belong_bytes, cudaMemcpyDeviceToHost);
+
+    // 第三层查询
+    
+    for (int i = 0; i < query_size; i++)
+    {
+        for (int j = 0; j < original_size; j++)
+        {
+            if (indices_0[j] == belong_0[i])
+            {
+                cudaMemcpyAsync()
+            }
+        }
+    }
 }
