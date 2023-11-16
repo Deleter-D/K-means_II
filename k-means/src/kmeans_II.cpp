@@ -17,7 +17,7 @@
 
 #define __USE_CUDA__
 
-void init(float *original_data, size_t original_size, size_t original_dim, float *cluster_set)
+void init(float *original_data, unsigned int original_size, unsigned int original_dim, float *cluster_set)
 {
 #ifdef DEBUG
 #ifdef _OPENMP
@@ -41,17 +41,17 @@ void init(float *original_data, size_t original_size, size_t original_dim, float
     size_t vec_bytes = original_dim * sizeof(float);
     size_t cluster_bytes = K * vec_bytes;
 
-    size_t index = distrib(gen);
+    unsigned int index = distrib(gen);
 
     float *cluster_set_temp = (float *)malloc((OVER_SAMPLING * INIT_ITERATION_TIMES + 1) * vec_bytes);
     memset(cluster_set_temp, 0, (OVER_SAMPLING * INIT_ITERATION_TIMES + 1) * vec_bytes);
 
     // 记录聚类中心向量的全局索引
-    std::set<size_t> center_index;
+    std::set<unsigned int> center_index;
 
     // 将第一个聚类中心并入集合C
     memcpy(cluster_set_temp, &original_data[index * original_dim], vec_bytes);
-    size_t current_k = 1;
+    unsigned int current_k = 1;
     center_index.insert(index); // 记录第一个聚类中心全局索引
 
 #ifdef DEBUG
@@ -70,7 +70,7 @@ void init(float *original_data, size_t original_size, size_t original_dim, float
 #endif
 
     // 存放概率值和索引的key-value对
-    std::vector<std::pair<float, size_t>> probability(original_size);
+    std::vector<std::pair<float, unsigned int>> probability(original_size);
     // 迭代
     for (int i = 0; i < INIT_ITERATION_TIMES; i++)
     {
@@ -104,7 +104,7 @@ void init(float *original_data, size_t original_size, size_t original_dim, float
         free(current_ps);
 
         // 排序，只排序l个
-        std::partial_sort(probability.begin(), probability.begin() + OVER_SAMPLING, probability.end(), std::greater<std::pair<float, size_t>>());
+        std::partial_sort(probability.begin(), probability.begin() + OVER_SAMPLING, probability.end(), std::greater<std::pair<float, unsigned int>>());
 
         auto beg = probability.cbegin();
         auto end = probability.cend();
@@ -126,11 +126,11 @@ void init(float *original_data, size_t original_size, size_t original_dim, float
     }
 
     // 记录每个聚类中心的权重
-    size_t *omega = (size_t *)malloc(current_k * sizeof(size_t));
-    memset(omega, 0, current_k * sizeof(size_t));
+    unsigned int *omega = (unsigned int *)malloc(current_k * sizeof(unsigned int));
+    memset(omega, 0, current_k * sizeof(unsigned int));
 
     // 记录每个向量归属的聚类中心索引
-    size_t *index_X2C = (size_t *)malloc(original_size * sizeof(size_t));
+    unsigned int *index_X2C = (unsigned int *)malloc(original_size * sizeof(unsigned int));
 #ifdef __USE_CUDA__
     cudaBelongS2S(index_X2C, original_data, cluster_set_temp, original_dim, original_size, current_k);
 #else
@@ -139,7 +139,7 @@ void init(float *original_data, size_t original_size, size_t original_dim, float
 #pragma omp parallel for
     for (int i = 0; i < original_size; i++)
     {
-        size_t index = index_X2C[i];
+        unsigned int index = index_X2C[i];
 #pragma omp atomic
         omega[index]++;
     }
@@ -177,13 +177,13 @@ void init(float *original_data, size_t original_size, size_t original_dim, float
 #endif
 }
 
-void iteration(float *original_data, size_t original_size, size_t original_dim, float *cluster_set)
+void iteration(float *original_data, unsigned int original_size, unsigned int original_dim, float *cluster_set)
 {
     size_t vec_bytes = original_dim * sizeof(float);
     size_t cluster_bytes = K * vec_bytes;
 
     // 计算全集中的向量所属的聚类中心的索引
-    size_t *belong = (size_t *)malloc(original_size * sizeof(size_t));
+    unsigned int *belong = (unsigned int *)malloc(original_size * sizeof(unsigned int));
 #ifdef __USE_CUDA__
     cudaBelongS2S(belong, original_data, cluster_set, original_dim, original_size, K);
 #else
@@ -196,7 +196,7 @@ void iteration(float *original_data, size_t original_size, size_t original_dim, 
     int iteration_times = 0;
     bool isclose;
 
-    size_t *temp_count = (size_t *)malloc(K * sizeof(size_t)); // 删除
+    unsigned int *temp_count = (unsigned int *)malloc(K * sizeof(unsigned int)); // 删除
     do
     {
         memcpy(cluster_set, cluster_new, cluster_bytes);
@@ -225,18 +225,18 @@ void iteration(float *original_data, size_t original_size, size_t original_dim, 
 
 #ifdef DEBUG
         printf("迭代%d\n", iteration_times);
-        memset(temp_count, 0, K * sizeof(size_t));
+        memset(temp_count, 0, K * sizeof(unsigned int));
 
         for (int i = 0; i < original_size; i++)
         {
-            size_t index = belong[i];
+            unsigned int index = belong[i];
 
             temp_count[index]++;
         }
 
         for (int i = 0; i < K; i++)
         {
-            printf("%d: %ld个\n", i, temp_count[i]);
+            printf("%d: %d个\n", i, temp_count[i]);
         }
 #endif
 
@@ -257,7 +257,7 @@ void iteration(float *original_data, size_t original_size, size_t original_dim, 
     free(belong);
 }
 
-void kmeansII(float *original_data, size_t original_size, size_t original_dim, float *cluster_set)
+void kmeansII(float *original_data, unsigned int original_size, unsigned int original_dim, float *cluster_set)
 {
     init(original_data, original_size, original_dim, cluster_set);
     iteration(original_data, original_size, original_dim, cluster_set);

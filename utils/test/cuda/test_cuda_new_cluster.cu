@@ -13,9 +13,9 @@ int main(int argc, char const *argv[])
     std::uniform_int_distribution<> distribInt(0, K - 1);
 
     float *original;
-    size_t *belong;
+    unsigned int *belong;
     original = (float *)malloc(TEST_SIZE * TEST_DIM * sizeof(float));
-    belong = (size_t *)malloc(TEST_SIZE * sizeof(size_t));
+    belong = (unsigned int *)malloc(TEST_SIZE * sizeof(unsigned int));
     for (int i = 0; i < TEST_SIZE * TEST_DIM; i++)
     {
         original[i] = distrib(gen);

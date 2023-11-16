@@ -29,9 +29,9 @@ int main(int argc, char const *argv[])
             return -1;
     }
 
-    size_t *x1, *y1;
-    x1 = (size_t *)malloc(TEST_DIM * sizeof(size_t));
-    y1 = (size_t *)malloc(TEST_DIM * sizeof(size_t));
+    unsigned int *x1, *y1;
+    x1 = (unsigned int *)malloc(TEST_DIM * sizeof(unsigned int));
+    y1 = (unsigned int *)malloc(TEST_DIM * sizeof(unsigned int));
 
     for (int i = 0; i < TEST_DIM; i++)
     {

@@ -16,13 +16,13 @@
 
 #define __USE_CUDA__
 
-void build(float *original_data, size_t original_size, int dim, unsigned int m, std::string prefix)
+void build(float *original_data, unsigned int original_size, int dim, unsigned int m, std::string prefix)
 {
     float *clusters;
-    size_t *indices;
+    unsigned int *indices;
 
     clusters = (float *)malloc(K * dim * sizeof(float));
-    indices = (size_t *)malloc(original_size * sizeof(size_t));
+    indices = (unsigned int *)malloc(original_size * sizeof(unsigned int));
 
 #ifdef DEBUG
     std::cout << DEBUG_HEAD << "begining to k-means II.\n";
@@ -48,7 +48,7 @@ void build(float *original_data, size_t original_size, int dim, unsigned int m, 
     free(indices);
 }
 
-void subQuery(float *distance, float *input, float *cluster, size_t *index, size_t original_size, int sub_dim)
+void subQuery(float *distance, float *input, float *cluster, unsigned int *index, unsigned int original_size, int sub_dim)
 {
     float *distance_tab;
     distance_tab = (float *)malloc(K * sizeof(float));
@@ -67,7 +67,7 @@ void subQuery(float *distance, float *input, float *cluster, size_t *index, size
     cudaGetAsymmetricDistance(distance, distance_tab, index, original_size);
 #else
 #pragma omp parallel for
-    for (size_t i = 0; i < original_size; i++)
+    for (unsigned int i = 0; i < original_size; i++)
     {
         distance[i] = distance_tab[index[i]];
     }
@@ -75,13 +75,13 @@ void subQuery(float *distance, float *input, float *cluster, size_t *index, size
     free(distance_tab);
 }
 
-void query(size_t *result, float *input, float **clusters, size_t **indices, size_t original_size, int original_dim, unsigned int m, unsigned int topk)
+void query(unsigned int *result, float *input, float **clusters, unsigned int **indices, unsigned int original_size, int original_dim, unsigned int m, unsigned int topk)
 {
     float **input_sub, **distance;
     input_sub = (float **)malloc(m * sizeof(float *));
     distance = (float **)malloc(m * sizeof(float *));
 
-    size_t sub_dim = original_dim / m;
+    unsigned int sub_dim = original_dim / m;
 
 #pragma omp parallel for
     for (unsigned int i = 0; i < m; i++)
@@ -96,10 +96,10 @@ void query(size_t *result, float *input, float **clusters, size_t **indices, siz
         subQuery(distance[i], input_sub[i], clusters[i], indices[i], original_size, sub_dim);
     }
 
-    std::vector<std::pair<float, size_t>> distance_final(original_size, {0, 0});
+    std::vector<std::pair<float, unsigned int>> distance_final(original_size, {0, 0});
 
 #pragma omp parallel for
-    for (size_t i = 0; i < original_size; i++)
+    for (unsigned int i = 0; i < original_size; i++)
     {
         for (unsigned int j = 0; j < m; j++)
         {
@@ -108,7 +108,7 @@ void query(size_t *result, float *input, float **clusters, size_t **indices, siz
         distance_final[i].second = i;
     }
 
-    std::partial_sort(distance_final.begin(), distance_final.begin() + topk, distance_final.end(), std::greater<std::pair<float, size_t>>());
+    std::partial_sort(distance_final.begin(), distance_final.begin() + topk, distance_final.end(), std::greater<std::pair<float, unsigned int>>());
 
 #pragma omp parallel for
     for (unsigned int i = 0; i < topk; i++)
@@ -117,7 +117,7 @@ void query(size_t *result, float *input, float **clusters, size_t **indices, siz
     }
 }
 
-void productQuantizationBuild(float *original_data, size_t original_size, int original_dim, unsigned int m, char *prefix)
+void productQuantizationBuild(float *original_data, unsigned int original_size, int original_dim, unsigned int m, char *prefix)
 {
     std::string prefix_str = prefix;
 #ifdef DEBUG
@@ -127,7 +127,7 @@ void productQuantizationBuild(float *original_data, size_t original_size, int or
 #ifdef DEBUG
     std::cout << DEBUG_HEAD << "split data finished.\n";
 #endif
-    size_t subset_dim = original_dim / m;
+    unsigned int subset_dim = original_dim / m;
 
 #pragma omp parallel for
     for (unsigned int i = 0; i < m; i++)
@@ -173,10 +173,10 @@ void productQuantizationBuild(float *original_data, size_t original_size, int or
     }
 }
 
-void productQuantizationQuery(size_t *result, float *input, float **clusters, size_t **indices, size_t input_size, size_t original_size, int orininal_dim, unsigned int m, unsigned int topk)
+void productQuantizationQuery(unsigned int *result, float *input, float **clusters, unsigned int **indices, unsigned int input_size, unsigned int original_size, int orininal_dim, unsigned int m, unsigned int topk)
 {
 #pragma omp parallel for
-    for (size_t i = 0; i < input_size; i++)
+    for (unsigned int i = 0; i < input_size; i++)
     {
         query(&result[i * topk], &input[i * orininal_dim], clusters, indices, original_size, orininal_dim, m, topk);
     }

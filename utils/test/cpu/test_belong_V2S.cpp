@@ -22,7 +22,7 @@ int main(int argc, char const *argv[])
         x[i] = distrib(gen);
     }
 
-    size_t index = belongV2S(x, S, TEST_DIM, TEST_SIZE);
+    unsigned int index = belongV2S(x, S, TEST_DIM, TEST_SIZE);
 
     free(x);
     free(S);

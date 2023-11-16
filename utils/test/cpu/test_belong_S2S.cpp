@@ -19,7 +19,7 @@ int main(int argc, char const *argv[])
         S2[i] = distrib(gen);
     }
 
-    size_t *index = (size_t *)malloc(TEST_SIZE * sizeof(size_t));
+    unsigned int *index = (unsigned int *)malloc(TEST_SIZE * sizeof(unsigned int));
     belongS2S(index, S1, S2, TEST_DIM, TEST_SIZE, TEST_SIZE);
 
     free(S1);

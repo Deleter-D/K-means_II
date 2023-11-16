@@ -74,13 +74,13 @@ void cudaEuclideanDistance(float *distance, float *vec, float *set, const int di
         if (i == iter_times - 1)
         {
             distance_bytes = size_last_iter * sizeof(float);
-            set_bytes = dim * size_last_iter * sizeof(float);
+            set_bytes = dim * static_cast<size_t>(size_last_iter) * sizeof(float);
             current_size = size_last_iter;
         }
         else
         {
             distance_bytes = size_per_iter * sizeof(float);
-            set_bytes = dim * size_per_iter * sizeof(float);
+            set_bytes = dim * static_cast<size_t>(size_per_iter) * sizeof(float);
             current_size = size_per_iter;
         }
 
@@ -120,7 +120,7 @@ void cudaEuclideanDistance(float *distance, float *vec, float *set, const int di
     free(temps);
 }
 
-float cudaCostFromV2S(float *vec, float *cluster_set, const int dim, const size_t size)
+float cudaCostFromV2S(float *vec, float *cluster_set, const int dim, const unsigned int size)
 {
     float min = 3.40282347e+38F;
 
@@ -128,7 +128,7 @@ float cudaCostFromV2S(float *vec, float *cluster_set, const int dim, const size_
     cudaEuclideanDistance(distance, vec, cluster_set, dim, size);
 
 #pragma omp parallel for private(i) reduction(min : min)
-    for (size_t i = 0; i < size; i++)
+    for (unsigned int i = 0; i < size; i++)
     {
         if (distance[i] < min)
             min = distance[i];
@@ -139,7 +139,7 @@ float cudaCostFromV2S(float *vec, float *cluster_set, const int dim, const size_
     return min;
 }
 
-__global__ void costFromS2SKernel(float *distances, float *original_set, float *cluster_set, int dim, size_t original_size, size_t cluster_size)
+__global__ void costFromS2SKernel(float *distances, float *original_set, float *cluster_set, int dim, unsigned int original_size, unsigned int cluster_size)
 {
     int tid = threadIdx.x;
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
@@ -168,7 +168,7 @@ __global__ void costFromS2SKernel(float *distances, float *original_set, float *
     }
 }
 
-float cudaCostFromS2S(float *original_set, float *cluster_set, const int dim, const size_t original_size, const size_t cluster_size)
+float cudaCostFromS2S(float *original_set, float *cluster_set, const int dim, const unsigned int original_size, const unsigned int cluster_size)
 {
     float *distances = (float *)malloc(original_size * sizeof(float));
 
@@ -207,13 +207,13 @@ float cudaCostFromS2S(float *original_set, float *cluster_set, const int dim, co
         if (i == iter_times - 1)
         {
             distance_bytes = size_last_iter * sizeof(float);
-            set_bytes = dim * size_last_iter * sizeof(float);
+            set_bytes = dim * static_cast<size_t>(size_last_iter) * sizeof(float);
             current_size = size_last_iter;
         }
         else
         {
             distance_bytes = size_per_iter * sizeof(float);
-            set_bytes = dim * size_per_iter * sizeof(float);
+            set_bytes = dim * static_cast<size_t>(size_per_iter) * sizeof(float);
             current_size = size_per_iter;
         }
 
@@ -253,7 +253,7 @@ float cudaCostFromS2S(float *original_set, float *cluster_set, const int dim, co
 
     float sum = 0.0f;
 #pragma omp parallel for reduction(+ : sum)
-    for (size_t i = 0; i < original_size; i++)
+    for (unsigned int i = 0; i < original_size; i++)
     {
         sum += distances[i];
     }
@@ -263,16 +263,16 @@ float cudaCostFromS2S(float *original_set, float *cluster_set, const int dim, co
     return sum;
 }
 
-size_t cudaBelongV2S(float *x, float *cluster_set, const int dim, const size_t size)
+unsigned int cudaBelongV2S(float *x, float *cluster_set, const int dim, const unsigned int size)
 {
     float min = 3.40282347e+38F;
-    size_t index;
+    unsigned int index;
 
     float *distance = (float *)malloc(size * sizeof(float));
     cudaEuclideanDistance(distance, x, cluster_set, dim, size);
 
 #pragma omp parallel for private(i) reduction(min : min)
-    for (size_t i = 0; i < size; i++)
+    for (unsigned int i = 0; i < size; i++)
     {
         if (distance[i] < min)
         {
@@ -286,7 +286,7 @@ size_t cudaBelongV2S(float *x, float *cluster_set, const int dim, const size_t s
     return index;
 }
 
-__global__ void belongS2SKernel(size_t *indices, float *distances, float *original_set, float *cluster_set, int dim, size_t original_size, size_t cluster_size)
+__global__ void belongS2SKernel(unsigned int *indices, float *distances, float *original_set, float *cluster_set, int dim, unsigned int original_size, unsigned int cluster_size)
 {
     int tid = threadIdx.x;
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
@@ -317,7 +317,7 @@ __global__ void belongS2SKernel(size_t *indices, float *distances, float *origin
     }
 }
 
-void cudaBelongS2S(size_t *index, float *original_set, float *cluster_set, const int dim, const size_t original_size, const size_t cluster_size)
+void cudaBelongS2S(unsigned int *index, float *original_set, float *cluster_set, const int dim, const unsigned int original_size, const unsigned int cluster_size)
 {
     size_t MAX_SIZE = 8e9 / (dim * sizeof(float));
     int iter_times = (original_size / MAX_SIZE) + 1;
@@ -336,10 +336,10 @@ void cudaBelongS2S(size_t *index, float *original_set, float *cluster_set, const
 
     cudaStream_t *stream = (cudaStream_t *)malloc(iter_times * sizeof(cudaStream_t));
     float **d_original_sets, **d_distances;
-    size_t **d_indices;
+    unsigned int **d_indices;
     d_original_sets = (float **)malloc(iter_times * sizeof(float *));
     d_distances = (float **)malloc(iter_times * sizeof(float *));
-    d_indices = (size_t **)malloc(iter_times * sizeof(size_t *));
+    d_indices = (unsigned int **)malloc(iter_times * sizeof(unsigned int *));
 
     float *d_cluster_set;
     cudaMalloc((void **)&d_cluster_set, cluster_size * dim * sizeof(float));
@@ -356,14 +356,14 @@ void cudaBelongS2S(size_t *index, float *original_set, float *cluster_set, const
         if (i == iter_times - 1)
         {
             distance_bytes = size_last_iter * sizeof(float);
-            index_bytes = size_last_iter * sizeof(size_t);
-            set_bytes = dim * size_last_iter * sizeof(float);
+            index_bytes = size_last_iter * sizeof(unsigned int);
+            set_bytes = dim * static_cast<size_t>(size_last_iter) * sizeof(float);
         }
         else
         {
             distance_bytes = size_per_iter * sizeof(float);
-            index_bytes = size_per_iter * sizeof(size_t);
-            set_bytes = dim * size_per_iter * sizeof(float);
+            index_bytes = size_per_iter * sizeof(unsigned int);
+            set_bytes = dim * static_cast<size_t>(size_per_iter) * sizeof(float);
         }
 
         cudaMalloc((void **)&d_original_sets[i], set_bytes);
@@ -373,7 +373,7 @@ void cudaBelongS2S(size_t *index, float *original_set, float *cluster_set, const
         cudaMemcpy(d_original_sets[i], &original_set[i * dim * size_per_iter], set_bytes, cudaMemcpyHostToDevice);
 
         dim3 block(1024);
-        size_t current_size;
+        unsigned int current_size;
         if (i == iter_times - 1)
         {
             current_size = size_last_iter;
@@ -416,7 +416,7 @@ void cudaBelongS2S(size_t *index, float *original_set, float *cluster_set, const
     free(d_indices);
 }
 
-__global__ void kmeansppKernel(size_t *indices, float *probability, float *cluster_set, float *cluster_final, size_t *omega, int dim, int current_k, int cluster_size)
+__global__ void kmeansppKernel(unsigned int *indices, float *probability, float *cluster_set, float *cluster_final, unsigned int *omega, int dim, int current_k, int cluster_size)
 {
     int tid = threadIdx.x;
     int idx = blockIdx.x * blockDim.x + tid;
@@ -446,29 +446,29 @@ __global__ void kmeansppKernel(size_t *indices, float *probability, float *clust
     }
 }
 
-void cudaKmeanspp(float *cluster_final, float *cluster_set, size_t *omega, size_t k, const int dim, const size_t cluster_size)
+void cudaKmeanspp(float *cluster_final, float *cluster_set, unsigned int *omega, unsigned int k, const int dim, const unsigned int cluster_size)
 {
     std::random_device rd;
     std::mt19937 gen(rd());
     std::uniform_int_distribution<> distrib(0, cluster_size - 1);
 
-    size_t index = distrib(gen);
+    unsigned int index = distrib(gen);
 
     // 均匀分布中随机采样一个原聚类中心集的向量放入最终聚类中心集中
     memcpy(&cluster_final[0], &cluster_set[index * dim], dim * sizeof(float));
-    size_t current_k = 1;
+    unsigned int current_k = 1;
 
     float max_p;
-    size_t max_p_index;
+    unsigned int max_p_index;
 
-    size_t indices_bytes = cluster_size * sizeof(size_t);
+    size_t indices_bytes = cluster_size * sizeof(unsigned int);
     size_t cluster_set_bytes = cluster_size * dim * sizeof(float);
     size_t p_bytes = cluster_size * sizeof(float);
 
-    size_t *indices = (size_t *)malloc(indices_bytes);
+    unsigned int *indices = (unsigned int *)malloc(indices_bytes);
     float *probability = (float *)malloc(p_bytes);
 
-    size_t *d_omega, *d_indices;
+    unsigned int *d_omega, *d_indices;
     float *d_cluster_set, *d_probability;
     cudaMalloc((void **)&d_cluster_set, cluster_set_bytes);
     cudaMalloc((void **)&d_omega, indices_bytes);
@@ -527,21 +527,21 @@ void cudaKmeanspp(float *cluster_final, float *cluster_set, size_t *omega, size_
     free(indices);
 }
 
-__global__ void getNewClusterKernel(float *cluster_new, float *original_set, size_t *belong, const int dim, const size_t original_size, unsigned int *count)
+__global__ void getNewClusterKernel(float *cluster_new, float *original_set, unsigned int *belong, const int dim, const unsigned int original_size, unsigned int *count)
 {
     unsigned int tid = threadIdx.x;
     unsigned int bid = blockIdx.x;
     unsigned int idx = blockIdx.x * blockDim.x + tid;
 
     extern __shared__ float sum[];
-    __shared__ size_t count_current_blk;
+    __shared__ unsigned int count_current_blk;
     if (tid < dim)
         sum[tid] = 0.0f;
     if (tid == 0)
         count_current_blk = 0;
     __syncthreads();
 
-    for (size_t i = tid, j = 0; j < original_size; i += dim, j++)
+    for (unsigned int i = tid, j = 0; j < original_size; i += dim, j++)
     {
         if (belong[j] == bid)
         {
@@ -565,15 +565,15 @@ __global__ void getNewClusterKernel(float *cluster_new, float *original_set, siz
         cluster_new[idx] /= count[bid];
 }
 
-void cudaGetNewCluster(float *cluster_new, float *original_set, size_t *belong, const int dim, const size_t original_size)
+void cudaGetNewCluster(float *cluster_new, float *original_set, unsigned int *belong, const int dim, const unsigned int original_size)
 {
     size_t cluster_bytes = dim * K * sizeof(float);
-    size_t origianl_set_bytes = dim * original_size * sizeof(float);
-    size_t belong_bytes = original_size * sizeof(size_t);
+    size_t origianl_set_bytes = dim * static_cast<size_t>(original_size) * sizeof(float);
+    size_t belong_bytes = original_size * sizeof(unsigned int);
     size_t count_bytes = K * sizeof(unsigned int);
 
     float *d_cluster_new, *d_original_set;
-    size_t *d_belong;
+    unsigned int *d_belong;
     unsigned int *d_count;
     cudaMalloc((void **)&d_cluster_new, cluster_bytes);
     cudaMalloc((void **)&d_original_set, origianl_set_bytes);
@@ -598,7 +598,7 @@ void cudaGetNewCluster(float *cluster_new, float *original_set, size_t *belong, 
     cudaFree(d_count);
 }
 
-__global__ void isCloseKernel(float *distance, float *cluster_new, float *cluster_old, float *temp, const int dim, const size_t cluster_size)
+__global__ void isCloseKernel(float *distance, float *cluster_new, float *cluster_old, float *temp, const int dim, const unsigned int cluster_size)
 {
     unsigned int tid = threadIdx.x;
     unsigned int idx = blockIdx.x * blockDim.x + tid;
@@ -628,7 +628,7 @@ __global__ void isCloseKernel(float *distance, float *cluster_new, float *cluste
         distance[blockIdx.x] = s_data[0];
 }
 
-bool cudaIsClose(float *cluster_new, float *cluster_old, const int dim, const size_t cluster_size, float epsilon)
+bool cudaIsClose(float *cluster_new, float *cluster_old, const int dim, const unsigned int cluster_size, float epsilon)
 {
     size_t distance_bytes = cluster_size * sizeof(float);
     size_t cluster_bytes = dim * cluster_size * sizeof(float);
@@ -658,7 +658,7 @@ bool cudaIsClose(float *cluster_new, float *cluster_old, const int dim, const si
     cudaFree(d_cluster_old);
     cudaFree(temp);
 
-    for (size_t i = 0; i < cluster_size; i++)
+    for (unsigned int i = 0; i < cluster_size; i++)
     {
         if (distance[i] > epsilon)
         {

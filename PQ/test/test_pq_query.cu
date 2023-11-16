@@ -49,48 +49,48 @@ int main(int argc, char const *argv[])
     // free(S1);
     munmap(S1, sb.st_size);
 
-//     size_t input_size = 10;
-//     float *input = (float *)malloc(input_size * TEST_TOTAL_DIM * sizeof(float));
-//     size_t *result = (size_t *)malloc(input_size * TOPK * sizeof(size_t));
-// #pragma omp parallel for
-//     for (int i = 0; i < input_size * TEST_TOTAL_DIM; i++)
-//     {
-//         input[i] = normal(gen);
-//     }
-//     memset(result, 0, input_size * TOPK * sizeof(size_t));
+    unsigned int input_size = 10;
+    float *input = (float *)malloc(input_size * TEST_TOTAL_DIM * sizeof(float));
+    unsigned int *result = (unsigned int *)malloc(input_size * TOPK * sizeof(unsigned int));
+#pragma omp parallel for
+    for (int i = 0; i < input_size * TEST_TOTAL_DIM; i++)
+    {
+        input[i] = normal(gen);
+    }
+    memset(result, 0, input_size * TOPK * sizeof(unsigned int));
 
-//     float **clusters = (float **)malloc(M * sizeof(float *));
-//     size_t **indices = (size_t **)malloc(M * sizeof(size_t *));
+    float **clusters = (float **)malloc(M * sizeof(float *));
+    unsigned int **indices = (unsigned int **)malloc(M * sizeof(unsigned int *));
 
-//     for (int i = 0; i < M; i++)
-//     {
-//         clusters[i] = (float *)malloc(K * TEST_DIM * sizeof(float));
-//         indices[i] = (size_t *)malloc(TEST_SIZE * sizeof(size_t));
-//         load(clusters[i], K * TEST_DIM, "./output/cluster" + std::to_string(i));
-//         load(indices[i], TEST_SIZE, "./output/index" + std::to_string(i));
-//     }
+    for (int i = 0; i < M; i++)
+    {
+        clusters[i] = (float *)malloc(K * TEST_DIM * sizeof(float));
+        indices[i] = (unsigned int *)malloc(TEST_SIZE * sizeof(unsigned int));
+        load(clusters[i], K * TEST_DIM, "./output/cluster" + std::to_string(i));
+        load(indices[i], TEST_SIZE, "./output/index" + std::to_string(i));
+    }
 
-//     productQuantizationQuery(result, input, clusters, indices, input_size, TEST_SIZE, TEST_TOTAL_DIM, M, TOPK);
+    productQuantizationQuery(result, input, clusters, indices, input_size, TEST_SIZE, TEST_TOTAL_DIM, M, TOPK);
 
-//     for (int i = 0; i < M; i++)
-//     {
-//         free(clusters[i]);
-//         free(indices[i]);
-//     }
-//     free(clusters);
-//     free(indices);
-//     free(input);
+    for (int i = 0; i < M; i++)
+    {
+        free(clusters[i]);
+        free(indices[i]);
+    }
+    free(clusters);
+    free(indices);
+    free(input);
 
-//     for (int i = 0; i < input_size * TOPK; i++)
-//     {
-//         printf("%ld\t", result[i]);
-//         if (i != 0 && (i + 1) % TOPK == 0)
-//         {
-//             printf("\n");
-//         }
-//     }
+    for (int i = 0; i < input_size * TOPK; i++)
+    {
+        printf("%d\t", result[i]);
+        if (i != 0 && (i + 1) % TOPK == 0)
+        {
+            printf("\n");
+        }
+    }
 
-//     free(result);
+    free(result);
 
     return 0;
 }

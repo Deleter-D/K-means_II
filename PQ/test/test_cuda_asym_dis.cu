@@ -13,11 +13,11 @@ int main(int argc, char const *argv[])
     std::uniform_real_distribution<float> distrib(0, 1);
 
     float *distance, *distance_cuda, *distance_tab;
-    size_t *index;
+    unsigned int *index;
     distance = (float *)malloc(TEST_SIZE * sizeof(float));
     distance_cuda = (float *)malloc(TEST_SIZE * sizeof(float));
     distance_tab = (float *)malloc(K * sizeof(float));
-    index = (size_t *)malloc(TEST_SIZE * sizeof(size_t));
+    index = (unsigned int *)malloc(TEST_SIZE * sizeof(unsigned int));
 
     for (int i = 0; i < TEST_SIZE; i++)
     {
@@ -30,7 +30,7 @@ int main(int argc, char const *argv[])
 
     cudaGetAsymmetricDistance(distance_cuda, distance_tab, index, TEST_SIZE);
 
-    for (size_t i = 0; i < TEST_SIZE; i++)
+    for (unsigned int i = 0; i < TEST_SIZE; i++)
     {
         distance[i] = distance_tab[index[i]];
     }

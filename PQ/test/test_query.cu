@@ -22,20 +22,20 @@ int main(int argc, char const *argv[])
     productQuantizationBuild(S1, TEST_SIZE, TEST_TOTAL_DIM, M, "./output/");
 
     float *input = (float *)malloc(TEST_TOTAL_DIM * sizeof(float));
-    size_t *result = (size_t *)malloc(TOPK * sizeof(size_t));
+    unsigned int *result = (unsigned int *)malloc(TOPK * sizeof(unsigned int));
 #pragma omp parallel for
     for (int i = 0; i < TEST_TOTAL_DIM; i++)
     {
         input[i] = distrib(gen);
     }
-    memset(result, 0, TOPK * sizeof(size_t));
+    memset(result, 0, TOPK * sizeof(unsigned int));
 
     float **clusters = (float **)malloc(M * sizeof(float *));
-    size_t **indices = (size_t **)malloc(M * sizeof(size_t *));
+    unsigned int **indices = (unsigned int **)malloc(M * sizeof(unsigned int *));
     for (int i = 0; i < M; i++)
     {
         clusters[i] = (float *)malloc(K * TEST_DIM * sizeof(float));
-        indices[i] = (size_t *)malloc(TEST_SIZE * sizeof(size_t));
+        indices[i] = (unsigned int *)malloc(TEST_SIZE * sizeof(unsigned int));
         load(clusters[i], K * TEST_DIM, "./output/cluster" + std::to_string(i));
         load(indices[i], TEST_SIZE, "./output/index" + std::to_string(i));
     }
@@ -44,7 +44,7 @@ int main(int argc, char const *argv[])
 
     for (int i = 0; i < TOPK; i++)
     {
-        printf("%ld\t", result[i]);
+        printf("%d\t", result[i]);
     }
 
     for (int i = 0; i < M; i++)

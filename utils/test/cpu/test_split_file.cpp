@@ -32,13 +32,13 @@ int main(int argc, char const *argv[])
 
     for (unsigned int i = 0; i < M; i++)
     {
-        for (size_t j = 0; j < TEST_SIZE; j++)
+        for (unsigned int j = 0; j < TEST_SIZE; j++)
         {
             for (int k = 0; k < TEST_DIM; k++)
             {
                 if (S1[j * TEST_TOTAL_DIM + i * TEST_DIM + k] != subsets[i][j * TEST_DIM + k])
                 {
-                    printf("(%d, %ld, %d): %f, %f\n", i, j, k, S1[j * TEST_TOTAL_DIM + i * TEST_DIM + k], subsets[i][j * TEST_DIM + k]);
+                    printf("(%d, %d, %d): %f, %f\n", i, j, k, S1[j * TEST_TOTAL_DIM + i * TEST_DIM + k], subsets[i][j * TEST_DIM + k]);
                 }
             }
         }

@@ -11,8 +11,8 @@ int main(int argc, char const *argv[])
     std::uniform_real_distribution<float> distrib(0, 1);
 
     float *cluster_set;
-    size_t *omega;
-    omega = (size_t *)malloc(TEST_SIZE * sizeof(size_t));
+    unsigned int *omega;
+    omega = (unsigned int *)malloc(TEST_SIZE * sizeof(unsigned int));
     cluster_set = (float *)malloc(TEST_SIZE * TEST_DIM * sizeof(float));
     for (int i = 0; i < TEST_SIZE * TEST_DIM; i++)
     {

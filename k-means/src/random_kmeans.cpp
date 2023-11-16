@@ -5,7 +5,7 @@
 
 #define __USE_CUDA__
 
-void randomInit(float *original_data, size_t original_size, size_t original_dim, float *cluster_set, int cluster_size)
+void randomInit(float *original_data, unsigned int original_size, unsigned int original_dim, float *cluster_set, int cluster_size)
 {
 #ifdef DEBUG
     time_t start_time = 0;
@@ -19,10 +19,10 @@ void randomInit(float *original_data, size_t original_size, size_t original_dim,
 
     size_t vec_bytes = original_dim * sizeof(float);
     size_t cluster_bytes = cluster_size * vec_bytes;
-    size_t current_k = 6 * cluster_size;
+    unsigned int current_k = 6 * cluster_size;
 
     // 随即选取6k个向量
-    size_t *indices = (size_t *)malloc(current_k * sizeof(size_t));
+    unsigned int *indices = (unsigned int *)malloc(current_k * sizeof(unsigned int));
 #pragma omp parallel for
     for (int i = 0; i < current_k; i++)
     {
@@ -45,11 +45,11 @@ void randomInit(float *original_data, size_t original_size, size_t original_dim,
 #endif
 
     // 记录每个聚类中心的权重
-    size_t *omega = (size_t *)malloc(current_k * sizeof(size_t));
-    memset(omega, 0, current_k * sizeof(size_t));
+    unsigned int *omega = (unsigned int *)malloc(current_k * sizeof(unsigned int));
+    memset(omega, 0, current_k * sizeof(unsigned int));
 
     // 记录每个向量归属的聚类中心索引
-    size_t *index_X2C = (size_t *)malloc(original_size * sizeof(size_t));
+    unsigned int *index_X2C = (unsigned int *)malloc(original_size * sizeof(unsigned int));
 
 #ifdef __USE_CUDA__
     cudaBelongS2S(index_X2C, original_data, cluster_set_temp, original_dim, original_size, current_k);
@@ -60,7 +60,7 @@ void randomInit(float *original_data, size_t original_size, size_t original_dim,
 #pragma omp parallel for
     for (int i = 0; i < original_size; i++)
     {
-        size_t index = index_X2C[i];
+        unsigned int index = index_X2C[i];
 #pragma omp atomic
         omega[index]++;
     }
@@ -98,13 +98,13 @@ void randomInit(float *original_data, size_t original_size, size_t original_dim,
 #endif
 }
 
-void randomIteration(float *original_data, size_t original_size, size_t original_dim, float *cluster_set, int cluster_size)
+void randomIteration(float *original_data, unsigned int original_size, unsigned int original_dim, float *cluster_set, int cluster_size)
 {
     size_t vec_bytes = original_dim * sizeof(float);
     size_t cluster_bytes = cluster_size * vec_bytes;
 
     // 计算全集中的向量所属的聚类中心的索引
-    size_t *belong = (size_t *)malloc(original_size * sizeof(size_t));
+    unsigned int *belong = (unsigned int *)malloc(original_size * sizeof(unsigned int));
 #ifdef __USE_CUDA__
     cudaBelongS2S(belong, original_data, cluster_set, original_dim, original_size, cluster_size);
 #else
@@ -117,7 +117,7 @@ void randomIteration(float *original_data, size_t original_size, size_t original
     int iteration_times = 0;
     bool isclose;
 
-    size_t *temp_count = (size_t *)malloc(cluster_size * sizeof(size_t)); // 删除
+    unsigned int *temp_count = (unsigned int *)malloc(cluster_size * sizeof(unsigned int)); // 删除
     do
     {
         memcpy(cluster_set, cluster_new, cluster_bytes);
@@ -146,18 +146,18 @@ void randomIteration(float *original_data, size_t original_size, size_t original
 
 #ifdef DEBUG
         printf("迭代%d\n", iteration_times);
-        memset(temp_count, 0, cluster_size * sizeof(size_t));
+        memset(temp_count, 0, cluster_size * sizeof(unsigned int));
 
         for (int i = 0; i < original_size; i++)
         {
-            size_t index = belong[i];
+            unsigned int index = belong[i];
 
             temp_count[index]++;
         }
 
         for (int i = 0; i < cluster_size; i++)
         {
-            printf("%d: %ld个\n", i, temp_count[i]);
+            printf("%d: %d个\n", i, temp_count[i]);
         }
 #endif
 
@@ -178,7 +178,7 @@ void randomIteration(float *original_data, size_t original_size, size_t original
     free(belong);
 }
 
-void randomKmeans(float *original_data, size_t original_size, size_t original_dim, float *cluster_set, int cluster_size)
+void randomKmeans(float *original_data, unsigned int original_size, unsigned int original_dim, float *cluster_set, int cluster_size)
 {
     randomInit(original_data, original_size, original_dim, cluster_set, cluster_size);
     randomIteration(original_data, original_size, original_dim, cluster_set, cluster_size);
