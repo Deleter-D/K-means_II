@@ -286,16 +286,14 @@ unsigned int cudaBelongV2S(float *x, float *cluster_set, const int dim, const un
     return index;
 }
 
-__global__ void belongS2SKernel(unsigned int *indices, float *distances, float *original_set, float *cluster_set, int dim, unsigned int original_size, unsigned int cluster_size)
+__global__ void belongS2SKernel(unsigned int *indices, float *original_set, float *cluster_set, int dim, unsigned int original_size, unsigned int cluster_size)
 {
-    int tid = threadIdx.x;
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
-
-    extern __shared__ float distance_temp[];
 
     if (idx < original_size)
     {
-        distances[idx] = INFINITY;
+        float min_distance = INFINITY;
+        float temp;
 
         for (int i = 0; i < cluster_size; i++)
         {
@@ -305,11 +303,11 @@ __global__ void belongS2SKernel(unsigned int *indices, float *distances, float *
                 float diff = original_set[idx * dim + j] - cluster_set[i * dim + j];
                 dist += diff * diff;
             }
-            distance_temp[tid] = dist;
+            temp = dist;
 
-            if (distance_temp[tid] < distances[idx])
+            if (temp < min_distance)
             {
-                distances[idx] = distance_temp[tid];
+                min_distance = temp;
 
                 indices[idx] = i;
             }
@@ -335,10 +333,9 @@ void cudaBelongS2S(unsigned int *index, float *original_set, float *cluster_set,
     }
 
     cudaStream_t *stream = (cudaStream_t *)malloc(iter_times * sizeof(cudaStream_t));
-    float **d_original_sets, **d_distances;
+    float **d_original_sets;
     unsigned int **d_indices;
     d_original_sets = (float **)malloc(iter_times * sizeof(float *));
-    d_distances = (float **)malloc(iter_times * sizeof(float *));
     d_indices = (unsigned int **)malloc(iter_times * sizeof(unsigned int *));
 
     float *d_cluster_set;
@@ -349,25 +346,21 @@ void cudaBelongS2S(unsigned int *index, float *original_set, float *cluster_set,
     {
         cudaStreamCreate(&stream[i]);
 
-        size_t distance_bytes;
         size_t index_bytes;
         size_t set_bytes;
 
         if (i == iter_times - 1)
         {
-            distance_bytes = size_last_iter * sizeof(float);
             index_bytes = size_last_iter * sizeof(unsigned int);
             set_bytes = dim * static_cast<size_t>(size_last_iter) * sizeof(float);
         }
         else
         {
-            distance_bytes = size_per_iter * sizeof(float);
             index_bytes = size_per_iter * sizeof(unsigned int);
             set_bytes = dim * static_cast<size_t>(size_per_iter) * sizeof(float);
         }
 
         cudaMalloc((void **)&d_original_sets[i], set_bytes);
-        cudaMalloc((void **)&d_distances[i], distance_bytes);
         cudaMalloc((void **)&d_indices[i], index_bytes);
 
         cudaMemcpy(d_original_sets[i], &original_set[i * dim * size_per_iter], set_bytes, cudaMemcpyHostToDevice);
@@ -388,7 +381,7 @@ void cudaBelongS2S(unsigned int *index, float *original_set, float *cluster_set,
         std::cout << "The " << i << "th iteration of thread " << omp_get_thread_num() << " is workding.\n";
 #endif
 
-        belongS2SKernel<<<grid, block, block.x * sizeof(float), stream[i]>>>(d_indices[i], d_distances[i], d_original_sets[i], d_cluster_set, dim, current_size, cluster_size);
+        belongS2SKernel<<<grid, block, block.x * sizeof(float), stream[i]>>>(d_indices[i], d_original_sets[i], d_cluster_set, dim, current_size, cluster_size);
 
         cudaMemcpy(&index[i * size_per_iter], d_indices[i], index_bytes, cudaMemcpyDeviceToHost);
 
@@ -404,7 +397,6 @@ void cudaBelongS2S(unsigned int *index, float *original_set, float *cluster_set,
         cudaStreamSynchronize(stream[i]);
 
         cudaFree(d_original_sets[i]);
-        cudaFree(d_distances[i]);
         cudaFree(d_indices[i]);
 
         cudaStreamDestroy(stream[i]);
@@ -412,7 +404,6 @@ void cudaBelongS2S(unsigned int *index, float *original_set, float *cluster_set,
     cudaFree(d_cluster_set);
     free(stream);
     free(d_original_sets);
-    free(d_distances);
     free(d_indices);
 }
 
