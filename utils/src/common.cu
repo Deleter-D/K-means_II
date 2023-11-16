@@ -384,6 +384,10 @@ void cudaBelongS2S(size_t *index, float *original_set, float *cluster_set, const
         }
         dim3 grid((current_size + block.x - 1) / block.x);
 
+#ifdef DEBUG
+        std::cout << "The " << i << "th iteration of thread " << omp_get_thread_num() << " is workding.\n";
+#endif
+
         belongS2SKernel<<<grid, block, block.x * sizeof(float), stream[i]>>>(d_indices[i], d_distances[i], d_original_sets[i], d_cluster_set, dim, current_size, cluster_size);
 
         cudaMemcpy(&index[i * size_per_iter], d_indices[i], index_bytes, cudaMemcpyDeviceToHost);

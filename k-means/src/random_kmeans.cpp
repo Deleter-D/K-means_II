@@ -1,11 +1,11 @@
 #include <random>
 #include <omp.h>
 #include <cstring>
-#include "../include/mini_batch_kmeans.h"
+#include "../include/random_kmeans.h"
 
 #define __USE_CUDA__
 
-void miniBatchInit(float *original_data, size_t original_size, size_t original_dim, float *cluster_set)
+void randomInit(float *original_data, size_t original_size, size_t original_dim, float *cluster_set, int cluster_size)
 {
 #ifdef DEBUG
     time_t start_time = 0;
@@ -18,8 +18,8 @@ void miniBatchInit(float *original_data, size_t original_size, size_t original_d
     std::uniform_int_distribution<> distrib(0, original_size - 1);
 
     size_t vec_bytes = original_dim * sizeof(float);
-    size_t cluster_bytes = K * vec_bytes;
-    size_t current_k = 6 * K;
+    size_t cluster_bytes = cluster_size * vec_bytes;
+    size_t current_k = 6 * cluster_size;
 
     // 随即选取6k个向量
     size_t *indices = (size_t *)malloc(current_k * sizeof(size_t));
@@ -74,9 +74,9 @@ void miniBatchInit(float *original_data, size_t original_size, size_t original_d
 
     float *cluster_final = (float *)malloc(cluster_bytes);
 #ifdef __USE_CUDA__
-    cudaKmeanspp(cluster_final, cluster_set_temp, omega, K, original_dim, current_k);
+    cudaKmeanspp(cluster_final, cluster_set_temp, omega, cluster_size, original_dim, current_k);
 #else
-    kmeanspp(cluster_final, cluster_set_temp, omega, K, original_dim, current_k);
+    kmeanspp(cluster_final, cluster_set_temp, omega, cluster_size, original_dim, current_k);
 #endif
     free(omega);
     free(cluster_set_temp);
@@ -98,17 +98,17 @@ void miniBatchInit(float *original_data, size_t original_size, size_t original_d
 #endif
 }
 
-void miniBatchIteration(float *original_data, size_t original_size, size_t original_dim, float *cluster_set)
+void randomIteration(float *original_data, size_t original_size, size_t original_dim, float *cluster_set, int cluster_size)
 {
     size_t vec_bytes = original_dim * sizeof(float);
-    size_t cluster_bytes = K * vec_bytes;
+    size_t cluster_bytes = cluster_size * vec_bytes;
 
     // 计算全集中的向量所属的聚类中心的索引
     size_t *belong = (size_t *)malloc(original_size * sizeof(size_t));
 #ifdef __USE_CUDA__
-    cudaBelongS2S(belong, original_data, cluster_set, original_dim, original_size, K);
+    cudaBelongS2S(belong, original_data, cluster_set, original_dim, original_size, cluster_size);
 #else
-    belongS2S(belong, original_data, cluster_set, original_dim, original_size, K);
+    belongS2S(belong, original_data, cluster_set, original_dim, original_size, cluster_size);
 #endif
 
     float *cluster_new = (float *)malloc(cluster_bytes);
@@ -117,7 +117,7 @@ void miniBatchIteration(float *original_data, size_t original_size, size_t origi
     int iteration_times = 0;
     bool isclose;
 
-    size_t *temp_count = (size_t *)malloc(K * sizeof(size_t)); // 删除
+    size_t *temp_count = (size_t *)malloc(cluster_size * sizeof(size_t)); // 删除
     do
     {
         memcpy(cluster_set, cluster_new, cluster_bytes);
@@ -128,7 +128,7 @@ void miniBatchIteration(float *original_data, size_t original_size, size_t origi
         // 产生新的聚类中心集
         float *mean_vec = (float *)malloc(vec_bytes);
         memset(mean_vec, 0, vec_bytes);
-        for (int i = 0; i < K; i++)
+        for (int i = 0; i < cluster_size; i++)
         {
             memset(mean_vec, 0, vec_bytes);
             meanVec(mean_vec, original_data, belong, original_dim, original_size, i);
@@ -138,15 +138,15 @@ void miniBatchIteration(float *original_data, size_t original_size, size_t origi
 #endif
 
 #ifdef __USE_CUDA__
-        cudaBelongS2S(belong, original_data, cluster_new, original_dim, original_size, K);
+        cudaBelongS2S(belong, original_data, cluster_new, original_dim, original_size, cluster_size);
 #else
         // 更新归属关系索引
-        belongS2S(belong, original_data, cluster_new, original_dim, original_size, K);
+        belongS2S(belong, original_data, cluster_new, original_dim, original_size, cluster_size);
 #endif
 
 #ifdef DEBUG
         printf("迭代%d\n", iteration_times);
-        memset(temp_count, 0, K * sizeof(size_t));
+        memset(temp_count, 0, cluster_size * sizeof(size_t));
 
         for (int i = 0; i < original_size; i++)
         {
@@ -155,7 +155,7 @@ void miniBatchIteration(float *original_data, size_t original_size, size_t origi
             temp_count[index]++;
         }
 
-        for (int i = 0; i < K; i++)
+        for (int i = 0; i < cluster_size; i++)
         {
             printf("%d: %ld个\n", i, temp_count[i]);
         }
@@ -164,9 +164,9 @@ void miniBatchIteration(float *original_data, size_t original_size, size_t origi
         iteration_times++;
 
 #ifdef __USE_CUDA__
-        isclose = cudaIsClose(cluster_new, cluster_set, original_dim, K, THRESHOLD);
+        isclose = cudaIsClose(cluster_new, cluster_set, original_dim, cluster_size, THRESHOLD);
 #else
-        isclose = isClose(cluster_new, cluster_set, original_dim, K, THRESHOLD);
+        isclose = isClose(cluster_new, cluster_set, original_dim, cluster_size, THRESHOLD);
 #endif
 
 #ifdef DEBUG
@@ -178,8 +178,8 @@ void miniBatchIteration(float *original_data, size_t original_size, size_t origi
     free(belong);
 }
 
-void miniBatchKmeansII(float *original_data, size_t original_size, size_t original_dim, float *cluster_set)
+void randomKmeans(float *original_data, size_t original_size, size_t original_dim, float *cluster_set, int cluster_size)
 {
-    miniBatchInit(original_data, original_size, original_dim, cluster_set);
-    miniBatchIteration(original_data, original_size, original_dim, cluster_set);
+    randomInit(original_data, original_size, original_dim, cluster_set, cluster_size);
+    randomIteration(original_data, original_size, original_dim, cluster_set, cluster_size);
 }

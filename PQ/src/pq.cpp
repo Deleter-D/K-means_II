@@ -11,8 +11,8 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include "../include/pq.h"
-#include "../../k-means_II/include/kmeans_II.h"
-#include "../../k-means_II/include/mini_batch_kmeans.h"
+#include "../../k-means/include/kmeans_II.h"
+#include "../../k-means/include/random_kmeans.h"
 
 #define __USE_CUDA__
 
@@ -29,7 +29,7 @@ void build(float *original_data, size_t original_size, int dim, unsigned int m, 
 #endif
     // 对每个子集进行聚类
     // kmeansII(original_data, original_size, dim, clusters);
-    miniBatchKmeansII(original_data, original_size, dim, clusters);
+    randomKmeans(original_data, original_size, dim, clusters, K);
 #ifdef DEBUG
     std::cout << DEBUG_HEAD << "k-means II finished, saving clusters and indices.\n";
 #endif

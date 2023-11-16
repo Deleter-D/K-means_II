@@ -6,7 +6,7 @@ set_target_properties(PQ PROPERTIES CUDA_ARCHITECTURES "50;60;70;80")
 target_link_libraries(PQ common_utils)
 target_link_libraries(PQ common_utils_cuda)
 target_link_libraries(PQ k-means_II)
-target_link_libraries(PQ mini_batch_k-means)
+target_link_libraries(PQ random_k-means)
 target_link_libraries(PQ OpenMP::OpenMP_CXX)
 
 add_executable(test_cuda_asym_dis ./test/test_cuda_asym_dis.cu)
