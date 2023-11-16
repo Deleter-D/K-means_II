@@ -388,7 +388,7 @@ void cudaBelongS2S(unsigned int *index, float *original_set, float *cluster_set,
         auto err = cudaGetLastError();
         if (err != cudaSuccess)
         {
-            std::cout << cudaGetErrorString(err) << "\n";
+            std::cout << "The " << i << "th iteration of thread " << omp_get_thread_num() << ": " << cudaGetErrorString(err) << "\n";
         }
     }
 
