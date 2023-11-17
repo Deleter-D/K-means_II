@@ -27,7 +27,7 @@ int main(int argc, char const *argv[])
     free(S1);
     free(S2);
 
-    if (abs(cost - cost_cuda) > 1e-3)
+    if (abs(cost - cost_cuda) > 1e-5)
     {
         std::cout << "host: " << cost << ", cuda: " << cost_cuda << "\n";
         return -1;

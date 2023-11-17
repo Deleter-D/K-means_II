@@ -135,8 +135,9 @@ float cudaCostFromV2S(float *vec, float *cluster_set, const int dim, const unsig
 
 __global__ void costFromS2SKernel(float *distances, float *original_set, float *cluster_set, int dim, unsigned int original_size, unsigned int cluster_size)
 {
-    int tid = threadIdx.x;
-    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    unsigned int tid = threadIdx.x;
+    unsigned int bid = blockIdx.y * gridDim.x + blockIdx.x;
+    unsigned int idx = bid * blockDim.x + tid;
 
     extern __shared__ float distance_temp[];
 
@@ -166,7 +167,7 @@ float cudaCostFromS2S(float *original_set, float *cluster_set, const int dim, co
 {
     float *distances = (float *)malloc(original_size * sizeof(float));
 
-    size_t MAX_SIZE = 8e9 / (dim * sizeof(float));
+    size_t MAX_SIZE = 2e10 / (dim * sizeof(float));
     int iter_times = (original_size / MAX_SIZE) + 1;
     int size_per_iter;
     int size_last_iter;
@@ -196,7 +197,7 @@ float cudaCostFromS2S(float *original_set, float *cluster_set, const int dim, co
 
         size_t distance_bytes;
         size_t set_bytes;
-        size_t current_size;
+        unsigned int current_size;
 
         if (i == iter_times - 1)
         {
@@ -218,7 +219,8 @@ float cudaCostFromS2S(float *original_set, float *cluster_set, const int dim, co
         cudaMemset(d_distances[i], 0, distance_bytes);
 
         dim3 block(1024);
-        dim3 grid((current_size + block.x - 1) / block.x);
+        unsigned int grid_dim = ceil(sqrt((current_size + block.x - 1) / block.x));
+        dim3 grid(grid_dim, grid_dim);
 
         costFromS2SKernel<<<grid, block, block.x * sizeof(float), stream[i]>>>(d_distances[i], d_original_sets[i], d_cluster_set, dim, current_size, cluster_size);
 
@@ -282,7 +284,9 @@ unsigned int cudaBelongV2S(float *x, float *cluster_set, const int dim, const un
 
 __global__ void belongS2SKernel(unsigned int *indices, float *original_set, float *cluster_set, int dim, unsigned int original_size, unsigned int cluster_size)
 {
-    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    unsigned int tid = threadIdx.x;
+    unsigned int bid = blockIdx.y * gridDim.x + blockIdx.x;
+    unsigned int idx = bid * blockDim.x + tid;
 
     if (idx < original_size)
     {
@@ -311,7 +315,7 @@ __global__ void belongS2SKernel(unsigned int *indices, float *original_set, floa
 
 void cudaBelongS2S(unsigned int *index, float *original_set, float *cluster_set, const int dim, const unsigned int original_size, const unsigned int cluster_size)
 {
-    size_t MAX_SIZE = 8e9 / (dim * sizeof(float));
+    size_t MAX_SIZE = 2e10 / (dim * sizeof(float));
     int iter_times = (original_size / MAX_SIZE) + 1;
     int size_per_iter;
     int size_last_iter;
@@ -342,16 +346,19 @@ void cudaBelongS2S(unsigned int *index, float *original_set, float *cluster_set,
 
         size_t index_bytes;
         size_t set_bytes;
+        unsigned int current_size;
 
         if (i == iter_times - 1)
         {
             index_bytes = size_last_iter * sizeof(unsigned int);
             set_bytes = dim * static_cast<size_t>(size_last_iter) * sizeof(float);
+            current_size = size_last_iter;
         }
         else
         {
             index_bytes = size_per_iter * sizeof(unsigned int);
             set_bytes = dim * static_cast<size_t>(size_per_iter) * sizeof(float);
+            current_size = size_per_iter;
         }
 
         cudaMalloc((void **)&d_original_sets[i], set_bytes);
@@ -360,22 +367,14 @@ void cudaBelongS2S(unsigned int *index, float *original_set, float *cluster_set,
         cudaMemcpy(d_original_sets[i], &original_set[i * dim * size_per_iter], set_bytes, cudaMemcpyHostToDevice);
 
         dim3 block(1024);
-        unsigned int current_size;
-        if (i == iter_times - 1)
-        {
-            current_size = size_last_iter;
-        }
-        else
-        {
-            current_size = size_per_iter;
-        }
-        dim3 grid((current_size + block.x - 1) / block.x);
+        unsigned int grid_dim = ceil(sqrt((current_size + block.x - 1) / block.x));
+        dim3 grid(grid_dim, grid_dim);
 
 #ifdef DEBUG
         std::cout << "The " << i << "th iteration of thread " << omp_get_thread_num() << " is workding.\n";
 #endif
 
-        belongS2SKernel<<<grid, block, block.x * sizeof(float), stream[i]>>>(d_indices[i], d_original_sets[i], d_cluster_set, dim, current_size, cluster_size);
+        belongS2SKernel<<<grid, block, 0, stream[i]>>>(d_indices[i], d_original_sets[i], d_cluster_set, dim, current_size, cluster_size);
 
         cudaMemcpy(&index[i * size_per_iter], d_indices[i], index_bytes, cudaMemcpyDeviceToHost);
 
