@@ -6,36 +6,36 @@
 #include <math.h>
 #include <iostream>
 
-__global__ void euclideanDistanceKernel(float *distance, float *vec, float *set, float *temp, const int dim, const int size)
+__global__ void euclideanDistanceKernel(float *distance, float *vec, float *set, const int dim, const int size)
 {
     unsigned int tid = threadIdx.x;
     unsigned int idx = blockIdx.x * blockDim.x + tid;
 
+    extern __shared__ float temp[];
+
     // 计算每对元素差的平方，存入temp
     if (idx < dim * size)
     {
-        temp[idx] = (vec[tid] - set[idx]) * (vec[tid] - set[idx]);
+        temp[tid] = (vec[tid] - set[idx]) * (vec[tid] - set[idx]);
     }
     __syncthreads();
 
-    extern __shared__ float s_data[];
-    s_data[tid] = temp[idx];
-    // if (tid < 32)
-    //     s_data[tid] = temp[idx] + temp[idx + 32] + temp[idx + 64];
+    if (tid < 32)
+        temp[tid] = temp[tid] + temp[tid + 32] + temp[tid + 64];
     __syncthreads();
 
     // 交错匹配的归约求和
-    for (int stride = blockDim.x / 2; stride > 0; stride >>= 1)
+    for (int stride = 16; stride > 0; stride >>= 1)
     {
         if (tid < stride)
         {
-            s_data[tid] += s_data[tid + stride];
+            temp[tid] += temp[tid + stride];
         }
         __syncthreads();
     }
 
     if (tid == 0)
-        distance[blockIdx.x] = s_data[0];
+        distance[blockIdx.x] = temp[0];
 }
 
 void cudaEuclideanDistance(float *distance, float *vec, float *set, const int dim, const int size)
@@ -57,11 +57,10 @@ void cudaEuclideanDistance(float *distance, float *vec, float *set, const int di
 
     cudaStream_t *stream = (cudaStream_t *)malloc(iter_times * sizeof(cudaStream_t));
     size_t vec_bytes = dim * sizeof(float);
-    float **d_distances, **d_vecs, **d_sets, **temps;
+    float **d_distances, **d_vecs, **d_sets;
     d_distances = (float **)malloc(iter_times * sizeof(float *));
     d_vecs = (float **)malloc(iter_times * sizeof(float *));
     d_sets = (float **)malloc(iter_times * sizeof(float *));
-    temps = (float **)malloc(iter_times * sizeof(float *));
 
     for (int i = 0; i < iter_times; i++)
     {
@@ -84,20 +83,17 @@ void cudaEuclideanDistance(float *distance, float *vec, float *set, const int di
             current_size = size_per_iter;
         }
 
-        // float *d_distance, *d_vec, *d_set, *temp;
         cudaMalloc((void **)&d_distances[i], distance_bytes);
         cudaMalloc((void **)&d_vecs[i], vec_bytes);
         cudaMalloc((void **)&d_sets[i], set_bytes);
-        cudaMalloc((void **)&temps[i], set_bytes);
 
         cudaMemcpy(d_vecs[i], vec, vec_bytes, cudaMemcpyHostToDevice);
         cudaMemcpy(d_sets[i], &set[i * dim * size_per_iter], set_bytes, cudaMemcpyHostToDevice);
         cudaMemset(d_distances[i], 0, distance_bytes);
-        cudaMemset(temps[i], 0, set_bytes);
 
         dim3 block(dim);
         dim3 grid((current_size * dim + block.x - 1) / block.x);
-        euclideanDistanceKernel<<<grid, block, dim * sizeof(float), stream[i]>>>(d_distances[i], d_vecs[i], d_sets[i], temps[i], dim, current_size);
+        euclideanDistanceKernel<<<grid, block, dim * sizeof(float), stream[i]>>>(d_distances[i], d_vecs[i], d_sets[i], dim, current_size);
 
         cudaMemcpy(&distance[i * size_per_iter], d_distances[i], distance_bytes, cudaMemcpyDeviceToHost);
     }
@@ -109,7 +105,6 @@ void cudaEuclideanDistance(float *distance, float *vec, float *set, const int di
         cudaFree(d_distances[i]);
         cudaFree(d_vecs[i]);
         cudaFree(d_sets[i]);
-        cudaFree(temps[i]);
 
         cudaStreamDestroy(stream[i]);
     }
@@ -117,7 +112,6 @@ void cudaEuclideanDistance(float *distance, float *vec, float *set, const int di
     free(d_distances);
     free(d_vecs);
     free(d_sets);
-    free(temps);
 }
 
 float cudaCostFromV2S(float *vec, float *cluster_set, const int dim, const unsigned int size)

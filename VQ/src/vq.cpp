@@ -47,7 +47,8 @@ void build(float *original_data, unsigned int original_size, int original_dim, c
     free(indices_1);
 }
 
-__global__ void levelQueryKernel(unsigned int *result, float *query_set, float *cluster, float *indices, unsigned int *belong, unsigned int dim, unsigned int query_size, unsigned int cluster_size, unsigned int indices_size)
+__global__ void levelQueryKernel(unsigned int *result, float *query_set, float *cluster, unsigned int *indices, unsigned int *belong,
+                                 unsigned int dim, unsigned int query_size, unsigned int cluster_size, unsigned int indices_size)
 {
     int tid = threadIdx.x;
     int idx = blockIdx.x * blockDim.x + tid;
@@ -133,15 +134,37 @@ void query(float *query_set, unsigned int query_size, float *original_data, unsi
     cudaMemcpy(belong_0, d_belong_0, belong_bytes, cudaMemcpyDeviceToHost);
 
     // 第三层查询
-    
+    // float **candidate = (float **)malloc(query_size * sizeof(float *));
+    cudaStream_t *streams = (cudaStream_t *)malloc(query_size * sizeof(cudaStream_t));
+
     for (int i = 0; i < query_size; i++)
     {
+        cudaStreamCreate(&streams[i]);
+        int count = 0;
+        size_t candidate_bytes = catagories_count[i] * original_dim * sizeof(float);
+        size_t distance_bytes = catagories_count[i] * sizeof(float);
+
+        
+
+        float *d_candidate, *d_distance;
+        cudaMallocAsync((void **)&d_candidate, candidate_bytes, streams[i]);
+        cudaMallocAsync((void **)&d_distance, distance_bytes, streams[i]);
+
+        cudaMemsetAsync(d_distance, 0, distance_bytes, streams[i]);
         for (int j = 0; j < original_size; j++)
         {
             if (indices_0[j] == belong_0[i])
             {
-                cudaMemcpyAsync()
+                cudaMemcpyAsync(&d_candidate[count * original_dim], &original_data[j * original_dim], original_dim * sizeof(float), cudaMemcpyHostToDevice, streams[i]);
+                count++;
             }
         }
+        cudaStreamSynchronize(streams[i]);
+
+        dim3 block1(original_dim);
+        dim3 grid1(catagories_count[i]);
+        euclideanDistanceKernel<<<grid1, block1>>>(d_distance, &d_query_set[i * original_dim], d_candidate, original_dim, catagories_count[i]);
+
+
     }
 }

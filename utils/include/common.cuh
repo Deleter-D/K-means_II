@@ -2,7 +2,7 @@
 
 #include <cuda_runtime.h>
 
-__global__ void euclideanDistanceKernel(float *distance, float *vec, float *set, float *temp, const int dim, const int size);
+__global__ void euclideanDistanceKernel(float *distance, float *vec, float *set, const int dim, const int size);
 void cudaEuclideanDistance(float *distance, float *vec, float *set, const int dim, const int size);
 
 float cudaCostFromV2S(float *vec, float *cluster_set, const int dim, const unsigned int size);
