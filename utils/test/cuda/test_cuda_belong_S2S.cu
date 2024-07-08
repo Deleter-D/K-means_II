@@ -12,21 +12,21 @@ int main(int argc, char const *argv[])
     std::uniform_real_distribution<float> distrib(0, 1);
 
     float *S1, *S2;
-    S1 = (float *)malloc(TEST_SIZE * TEST_DIM * sizeof(float));
-    S2 = (float *)malloc(TEST_SIZE * TEST_DIM * sizeof(float));
-    for (int i = 0; i < TEST_SIZE * TEST_DIM; i++)
+    S1 = (float *)malloc(TEST_SIZE * TEST_TOTAL_DIM * sizeof(float));
+    S2 = (float *)malloc(TEST_SIZE * TEST_TOTAL_DIM * sizeof(float));
+    for (int i = 0; i < TEST_SIZE * TEST_TOTAL_DIM; i++)
     {
         S1[i] = distrib(gen);
         S2[i] = distrib(gen);
     }
 
     unsigned int *index = (unsigned int *)malloc(TEST_SIZE * sizeof(unsigned int));
-    belongS2S(index, S1, S2, TEST_DIM, TEST_SIZE, TEST_SIZE);
+    belongS2S(index, S1, S2, TEST_TOTAL_DIM, TEST_SIZE, TEST_SIZE);
 
     std::cout << "host finished." << std::endl;
 
     unsigned int *index_cuda = (unsigned int *)malloc(TEST_SIZE * sizeof(unsigned int));
-    cudaBelongS2S(index_cuda, S1, S2, TEST_DIM, TEST_SIZE, TEST_SIZE);
+    cudaBelongS2S(index_cuda, S1, S2, TEST_TOTAL_DIM, TEST_SIZE, TEST_SIZE);
 
     free(S1);
     free(S2);

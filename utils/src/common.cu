@@ -511,7 +511,8 @@ void cudaKmeanspp(float *cluster_final, float *cluster_set, unsigned int *omega,
     free(indices);
 }
 
-__global__ void getNewClusterKernel(float *cluster_new, float *original_set, unsigned int *belong, const int dim, const unsigned int original_size, unsigned int *count)
+__global__ void getNewClusterKernel(float *cluster_new, float *original_set, unsigned int *belong, const int dim,
+                                    const unsigned int original_size, unsigned int *count, unsigned int cluster_size)
 {
     unsigned int tid = threadIdx.x;
     unsigned int bid = blockIdx.x;
@@ -545,16 +546,16 @@ __global__ void getNewClusterKernel(float *cluster_new, float *original_set, uns
         count[bid] = count_current_blk;
     __syncthreads();
 
-    if (idx < K * dim)
+    if (idx < cluster_size * dim)
         cluster_new[idx] /= count[bid];
 }
 
-void cudaGetNewCluster(float *cluster_new, float *original_set, unsigned int *belong, const int dim, const unsigned int original_size)
+void cudaGetNewCluster(float *cluster_new, float *original_set, unsigned int *belong, const int dim, const unsigned int original_size, unsigned int cluster_size)
 {
-    size_t cluster_bytes = dim * K * sizeof(float);
+    size_t cluster_bytes = dim * cluster_size * sizeof(float);
     size_t origianl_set_bytes = dim * static_cast<size_t>(original_size) * sizeof(float);
     size_t belong_bytes = original_size * sizeof(unsigned int);
-    size_t count_bytes = K * sizeof(unsigned int);
+    size_t count_bytes = cluster_size * sizeof(unsigned int);
 
     float *d_cluster_new, *d_original_set;
     unsigned int *d_belong;
@@ -570,8 +571,8 @@ void cudaGetNewCluster(float *cluster_new, float *original_set, unsigned int *be
     cudaMemset(d_count, 0, count_bytes);
 
     dim3 block(dim);
-    dim3 grid(K);
-    getNewClusterKernel<<<grid, block, (dim) * sizeof(float)>>>(d_cluster_new, d_original_set, d_belong, dim, original_size, d_count);
+    dim3 grid(cluster_size);
+    getNewClusterKernel<<<grid, block, (dim) * sizeof(float)>>>(d_cluster_new, d_original_set, d_belong, dim, original_size, d_count, cluster_size);
 
     cudaMemcpy(cluster_new, d_cluster_new, cluster_bytes, cudaMemcpyDeviceToHost);
     cudaDeviceSynchronize();

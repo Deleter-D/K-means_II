@@ -123,7 +123,7 @@ void randomIteration(float *original_data, unsigned int original_size, unsigned 
         memcpy(cluster_set, cluster_new, cluster_bytes);
 
 #ifdef __USE_CUDA__
-        cudaGetNewCluster(cluster_new, original_data, belong, original_dim, original_size);
+        cudaGetNewCluster(cluster_new, original_data, belong, original_dim, original_size, cluster_size);
 #else
         // 产生新的聚类中心集
         float *mean_vec = (float *)malloc(vec_bytes);

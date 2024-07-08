@@ -12,12 +12,14 @@
 #define MAX_KMEANS_ITERATION_TIMES 2000
 
 // VQ超参数
-#define K0 60000
-#define K1 200
+// #define K0 60000
+// #define K1 200
+#define K0 1000
+#define K1 10
 
 // 仅用于测试
 #define TEST_SIZE 10000
 #define TEST_TOTAL_DIM 96
 #define TEST_DIM 32
-#define TOPK 10
+#define TOPK 5
 #define M 3

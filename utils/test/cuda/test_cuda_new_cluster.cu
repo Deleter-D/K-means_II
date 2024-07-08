@@ -37,7 +37,7 @@ int main(int argc, char const *argv[])
     free(mean_vec);
 
     float *cluster_new_cuda = (float *)malloc(TEST_DIM * K * sizeof(float));
-    cudaGetNewCluster(cluster_new_cuda, original, belong, TEST_DIM, TEST_SIZE);
+    cudaGetNewCluster(cluster_new_cuda, original, belong, TEST_DIM, TEST_SIZE, K);
 
     free(original);
     free(belong);
